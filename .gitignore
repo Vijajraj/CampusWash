@@ -1,0 +1,23 @@
+# Root
+.env
+*.env
+serviceAccount.json
+
+# Backend
+backend/.env
+backend/serviceAccount.json
+backend/__pycache__/
+backend/.pytest_cache/
+backend/venv/
+backend/.venv/
+
+# Frontend
+frontend/.env
+frontend/node_modules/
+frontend/dist/
+frontend/.vercel/
+
+# General
+.DS_Store
+Thumbs.db
+*.log

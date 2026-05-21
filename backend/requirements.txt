@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+supabase
+python-jose[cryptography]
+httpx
+python-multipart
+python-dotenv
+pydantic
+firebase-admin
+Pillow

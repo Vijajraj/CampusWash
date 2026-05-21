@@ -1,0 +1,775 @@
+# CampusWash — Spec v10 (V1 Launch)
+> Single source of truth. Paste this at the start of every vibe coding session.
+
+---
+
+## What we are building
+
+A college-only clothes platform for CIT Chennai students with 3 modules:
+1. **Borrow & Lend** — post clothes to lend, request a borrow, approve/reject/return
+2. **Item Request Board** — post "I need X", others respond, requester marks fulfilled
+3. **Lost & Found** — post lost or found clothes with a photo, browse and claim
+
+---
+
+## Rules
+
+- CIT Chennai students only — @citchennai.net Google accounts
+- No anonymous posting — every user is identified
+- No payments — platform is free to use
+- No Docker
+- Free tier only
+
+---
+
+## Stack
+
+| Layer | Tool |
+|---|---|
+| Auth | Firebase Authentication — Google Sign-In |
+| Frontend | React 18 + Vite + Tailwind CSS → Vercel |
+| Backend | FastAPI (Python 3.11) → Render |
+| Database | Supabase PostgreSQL |
+| File storage | Supabase Storage |
+| Realtime | Supabase Realtime |
+| CI/CD | GitHub Actions |
+
+---
+
+## Environment variables
+
+### backend/.env
+```
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+FIREBASE_PROJECT_ID=
+FIREBASE_SERVICE_ACCOUNT_JSON=./serviceAccount.json
+JWT_SECRET=
+FRONTEND_URL=http://localhost:5173
+COLLEGE_EMAIL_DOMAIN=citchennai.net
+```
+
+### frontend/.env
+```
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+```
+
+---
+
+## Auth flow
+
+```
+1. Student clicks "Sign in with Google"
+2. Firebase popup — only @citchennai.net accounts allowed
+3. Frontend sends Firebase ID token to POST /auth/firebase-login
+4. Backend verifies token, checks domain, creates user if new,
+   parses department + batch year from email, returns JWT
+5. If profile_complete = false → redirect to CompleteProfile
+6. If profile_complete = true → redirect to Dashboard
+```
+
+Email parsing:
+```
+vijayrajs.aids2024@citchennai.net
+→ department: AI&DS
+→ batch_year: 2024-2028
+```
+
+---
+
+## Supabase setup
+
+### Extensions
+```sql
+create extension if not exists "uuid-ossp";
+create extension if not exists "vector";
+```
+
+### Storage buckets
+| Bucket | Public |
+|---|---|
+| item-images | true |
+| lend-images | true |
+
+### Schema
+```sql
+-- USERS
+create table users (
+  id               uuid primary key default uuid_generate_v4(),
+  firebase_uid     text unique not null,
+  email            text unique not null,
+  name             text,
+  register_number  text unique,
+  department       text,
+  batch_year       text,
+  phone            text,
+  profile_complete boolean not null default false,
+  role             text not null default 'student'
+                   check (role in ('student', 'moderator', 'admin')),
+  created_at       timestamptz not null default now()
+);
+
+create index idx_users_firebase on users(firebase_uid);
+create index idx_users_email    on users(email);
+
+-- LEND LISTINGS
+create table lend_listings (
+  id              uuid primary key default uuid_generate_v4(),
+  owner_id        uuid not null references users(id) on delete cascade,
+  title           text not null,
+  description     text,
+  item_type       text not null
+                  check (item_type in ('shirt','trouser','blazer',
+                                       'saree','kurta','towel','other')),
+  size            text,
+  color           text,
+  image_url       text,
+  max_borrow_days integer not null default 3,
+  status          text not null default 'available'
+                  check (status in ('available','borrowed','unavailable')),
+  created_at      timestamptz not null default now()
+);
+
+create index idx_lend_owner  on lend_listings(owner_id);
+create index idx_lend_status on lend_listings(status);
+
+-- BORROW REQUESTS
+create table borrow_requests (
+  id           uuid primary key default uuid_generate_v4(),
+  listing_id   uuid not null references lend_listings(id) on delete cascade,
+  borrower_id  uuid not null references users(id) on delete cascade,
+  reason       text,
+  borrow_from  date not null,
+  borrow_until date not null,
+  status       text not null default 'pending'
+               check (status in ('pending','approved',
+                                 'rejected','returned','overdue')),
+  created_at   timestamptz not null default now()
+);
+
+create index idx_borrow_listing  on borrow_requests(listing_id);
+create index idx_borrow_borrower on borrow_requests(borrower_id);
+create index idx_borrow_status   on borrow_requests(status);
+
+-- ITEM REQUESTS
+create table item_requests (
+  id           uuid primary key default uuid_generate_v4(),
+  requester_id uuid not null references users(id) on delete cascade,
+  title        text not null,
+  description  text,
+  item_type    text not null
+               check (item_type in ('shirt','trouser','blazer','saree',
+                                    'kurta','towel','shoes','other')),
+  size         text,
+  color        text,
+  needed_by    date,
+  status       text not null default 'open'
+               check (status in ('open','fulfilled','expired')),
+  expires_at   timestamptz not null
+               default (now() + interval '7 days'),
+  created_at   timestamptz not null default now()
+);
+
+create index idx_requests_requester on item_requests(requester_id);
+create index idx_requests_status    on item_requests(status);
+create index idx_requests_expires   on item_requests(expires_at);
+
+-- REQUEST RESPONSES
+create table request_responses (
+  id           uuid primary key default uuid_generate_v4(),
+  request_id   uuid not null references item_requests(id) on delete cascade,
+  responder_id uuid not null references users(id) on delete cascade,
+  message      text not null,
+  created_at   timestamptz not null default now(),
+  unique (request_id, responder_id)
+);
+
+create index idx_responses_request on request_responses(request_id);
+
+-- LOST ITEMS
+create table lost_items (
+  id            uuid primary key default uuid_generate_v4(),
+  user_id       uuid not null references users(id) on delete cascade,
+  title         text not null,
+  description   text,
+  item_type     text not null
+                check (item_type in ('shirt','trouser','towel',
+                                     'bedsheet','blazer','other')),
+  color         text,
+  location_lost text,
+  date_lost     date,
+  image_url     text,
+  status        text not null default 'open'
+                check (status in ('open','closed')),
+  created_at    timestamptz not null default now()
+);
+
+create index idx_lost_user   on lost_items(user_id);
+create index idx_lost_status on lost_items(status);
+
+-- FOUND ITEMS
+create table found_items (
+  id             uuid primary key default uuid_generate_v4(),
+  user_id        uuid not null references users(id) on delete cascade,
+  title          text not null,
+  description    text,
+  item_type      text not null
+                 check (item_type in ('shirt','trouser','towel',
+                                      'bedsheet','blazer','other')),
+  color          text,
+  location_found text,
+  date_found     date,
+  image_url      text,
+  status         text not null default 'unclaimed'
+                 check (status in ('unclaimed','claimed')),
+  created_at     timestamptz not null default now()
+);
+
+create index idx_found_user   on found_items(user_id);
+create index idx_found_status on found_items(status);
+
+-- REPORTS
+create table reports (
+  id          uuid primary key default uuid_generate_v4(),
+  reporter_id uuid not null references users(id) on delete cascade,
+  target_type text not null
+              check (target_type in ('lost_item','found_item',
+                                     'lend_listing','item_request','user')),
+  target_id   uuid not null,
+  reason      text not null,
+  status      text not null default 'pending'
+              check (status in ('pending','resolved','dismissed')),
+  resolved_by uuid references users(id),
+  created_at  timestamptz not null default now()
+);
+
+create index idx_reports_status on reports(status);
+
+-- ROW LEVEL SECURITY
+alter table users             enable row level security;
+alter table lend_listings     enable row level security;
+alter table borrow_requests   enable row level security;
+alter table item_requests     enable row level security;
+alter table request_responses enable row level security;
+alter table lost_items        enable row level security;
+alter table found_items       enable row level security;
+alter table reports           enable row level security;
+
+-- PUBLIC READ POLICIES
+create policy "public read lend listings"
+  on lend_listings for select using (true);
+
+create policy "public read item requests"
+  on item_requests for select using (true);
+
+create policy "public read lost items"
+  on lost_items for select using (true);
+
+create policy "public read found items"
+  on found_items for select using (true);
+```
+
+---
+
+## Folder structure
+
+```
+campuswash/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml
+├── backend/
+│   ├── main.py
+│   ├── .env
+│   ├── .env.example
+│   ├── requirements.txt
+│   ├── serviceAccount.json
+│   └── app/
+│       ├── db.py
+│       ├── dependencies.py
+│       ├── utils/
+│       │   └── email_parser.py
+│       ├── models/
+│       │   ├── auth.py
+│       │   ├── borrow.py
+│       │   ├── requests.py
+│       │   └── items.py
+│       └── routers/
+│           ├── auth.py
+│           ├── borrow.py
+│           ├── requests.py
+│           ├── items.py
+│           └── moderation.py
+└── frontend/
+    ├── index.html
+    ├── vite.config.js
+    ├── tailwind.config.js
+    ├── .env
+    ├── .env.example
+    └── src/
+        ├── main.jsx
+        ├── App.jsx
+        ├── lib/
+        │   ├── firebase.js
+        │   └── supabase.js
+        ├── context/
+        │   └── AuthContext.jsx
+        ├── api/
+        │   ├── auth.js
+        │   ├── borrow.js
+        │   ├── requests.js
+        │   └── items.js
+        ├── hooks/
+        │   ├── useAuth.js
+        │   ├── useBorrow.js
+        │   ├── useRequests.js
+        │   └── useItems.js
+        ├── pages/
+        │   ├── Login.jsx
+        │   ├── CompleteProfile.jsx
+        │   ├── Dashboard.jsx
+        │   ├── BorrowLend.jsx
+        │   ├── PostLending.jsx
+        │   ├── ItemRequests.jsx
+        │   ├── PostRequest.jsx
+        │   ├── LostAndFound.jsx
+        │   ├── PostItem.jsx
+        │   └── admin/
+        │       └── ModerationQueue.jsx
+        └── components/
+            ├── LendCard.jsx
+            ├── RequestCard.jsx
+            ├── ItemCard.jsx
+            └── StatusBadge.jsx
+```
+
+---
+
+## requirements.txt
+
+```
+fastapi
+uvicorn
+supabase
+python-jose[cryptography]
+httpx
+python-multipart
+python-dotenv
+pydantic
+firebase-admin
+Pillow
+```
+
+---
+
+## Key service logic
+
+### app/db.py
+```python
+from supabase import create_client, Client
+import os
+
+supabase: Client = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_KEY")
+)
+```
+
+### app/utils/email_parser.py
+```python
+import re
+
+DEPT_MAP = {
+    "aids": "AI&DS", "aiml": "AI&ML", "cse": "CSE",
+    "ece": "ECE",    "eee": "EEE",    "it": "IT",
+    "mech": "Mechanical", "civil": "Civil", "mba": "MBA",
+}
+
+def validate_college_email(email: str, domain: str = "citchennai.net") -> bool:
+    return email.lower().endswith(f"@{domain}")
+
+def parse_college_email(email: str) -> dict:
+    try:
+        prefix = email.split("@")[0].lower()
+        match = re.search(r'([a-z]+)(\d{4})$', prefix)
+        if not match:
+            return {"department": None, "batch_year": None}
+        dept  = DEPT_MAP.get(match.group(1))
+        year  = int(match.group(2))
+        return {"department": dept, "batch_year": f"{year}-{year+4}"}
+    except Exception:
+        return {"department": None, "batch_year": None}
+```
+
+### app/dependencies.py — token verification inline
+```python
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from firebase_admin import auth as firebase_auth, credentials
+import firebase_admin, os
+from jose import jwt, JWTError
+from app.db import supabase
+from dataclasses import dataclass
+
+import json
+
+service_account_info = json.loads(os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON"))
+cred = credentials.Certificate(service_account_info)
+firebase_admin.initialize_app(cred)
+
+bearer = HTTPBearer()
+
+if not firebase_admin._apps:
+    cred = credentials.Certificate(os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON"))
+    firebase_admin.initialize_app(cred)
+
+@dataclass
+class CurrentUser:
+    id: str
+    email: str
+    role: str
+    profile_complete: bool
+
+async def get_current_user(
+    creds: HTTPAuthorizationCredentials = Depends(bearer)
+) -> CurrentUser:
+    try:
+        payload = jwt.decode(
+            creds.credentials,
+            os.getenv("JWT_SECRET"),
+            algorithms=["HS256"]
+        )
+        user_id = payload.get("sub")
+    except JWTError:
+        raise HTTPException(401, detail={
+            "error": "UNAUTHORIZED", "message": "Invalid or expired token"
+        })
+    result = supabase.table("users").select(
+        "id, email, role, profile_complete"
+    ).eq("id", user_id).single().execute()
+    if not result.data:
+        raise HTTPException(401, detail={
+            "error": "UNAUTHORIZED", "message": "User not found"
+        })
+    user = result.data
+    if not user["profile_complete"]:
+        raise HTTPException(403, detail={
+            "error": "INCOMPLETE_PROFILE",
+            "message": "Complete your profile before posting"
+        })
+    return CurrentUser(**user)
+
+async def require_moderator(
+    user: CurrentUser = Depends(get_current_user)
+) -> CurrentUser:
+    if user.role not in ("moderator", "admin"):
+        raise HTTPException(403, detail={
+            "error": "FORBIDDEN", "message": "Moderator access required"
+        })
+    return user
+```
+
+### Image compression (inline in routers, not a separate file)
+```python
+from PIL import Image
+import io
+
+def compress(file_bytes: bytes, max_width: int = 800) -> bytes:
+    img = Image.open(io.BytesIO(file_bytes))
+    if img.width > max_width:
+        ratio = max_width / img.width
+        img = img.resize((max_width, int(img.height * ratio)), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=75)
+    return out.getvalue()
+```
+
+---
+
+## API contract
+
+Base URL: `/api/v1`
+
+### Standard error shape
+```json
+{ "error": "CODE", "message": "Human readable" }
+```
+
+### Standard pagination shape
+```json
+{ "items": [], "total": 0, "page": 1, "page_size": 20, "total_pages": 1 }
+```
+
+### Error codes
+```
+UNAUTHORIZED         — missing or invalid JWT
+FORBIDDEN            — insufficient role
+INCOMPLETE_PROFILE   — must complete profile first
+NOT_FOUND            — resource does not exist
+BORROW_CONFLICT      — dates overlap with existing approved request
+ALREADY_RESPONDED    — user already responded to this request
+UPLOAD_FAILED        — storage upload error
+```
+
+---
+
+### Auth
+
+```
+POST /auth/firebase-login
+  body:     { firebase_token }
+  response: { access_token, user_id, profile_complete, parsed: {department, batch_year} }
+  flow:     verify firebase token → check @citchennai.net domain
+            → create user if new → return JWT
+
+POST /auth/complete-profile
+  auth:     JWT (profile_complete can be false)
+  body:     { name, register_number, department, batch_year, phone? }
+  response: { message, access_token }
+  note:     register_number mandatory, unique, min 6 chars, no spaces
+
+GET /auth/me
+  auth:     JWT
+  response: { id, email, name, register_number, department,
+              batch_year, phone, profile_complete, role }
+```
+
+---
+
+### Borrow & Lend
+
+```
+GET    /borrow/listings              — no auth, paginated, ?type=&size=&page=
+POST   /borrow/listings              — JWT, multipart (image optional)
+DELETE /borrow/listings/{id}         — JWT, owner only, cannot delete if borrowed
+GET    /borrow/listings/{id}         — no auth
+POST   /borrow/listings/{id}/request — JWT, not owner, body: {reason,borrow_from,borrow_until}
+                                       check: borrow_until - borrow_from <= max_borrow_days
+                                       check: no overlapping approved request → BORROW_CONFLICT
+GET    /borrow/my-requests           — JWT, paginated
+GET    /borrow/my-listings-requests  — JWT, paginated (incoming requests on my listings)
+PATCH  /borrow/requests/{id}/approve — JWT, listing owner only
+                                       → listing status = borrowed
+PATCH  /borrow/requests/{id}/reject  — JWT, listing owner only
+PATCH  /borrow/requests/{id}/return  — JWT, listing owner only
+                                       → listing status = available
+                                       → request status = returned
+```
+
+---
+
+### Item Requests
+
+```
+GET    /requests                — no auth, paginated, excludes expired
+                                  ?type=&size=&page=
+POST   /requests                — JWT, expires_at = now() + 7 days
+DELETE /requests/{id}           — JWT, requester only
+POST   /requests/{id}/respond   — JWT, not requester → ALREADY_RESPONDED if sent before
+GET    /requests/{id}/responses — JWT, requester only
+PATCH  /requests/{id}/fulfill   — JWT, requester only → status = fulfilled
+```
+
+---
+
+### Lost & Found
+
+```
+GET  /items/lost               — no auth, paginated, ?type=&color=&page=
+GET  /items/found              — no auth, paginated, ?type=&color=&page=
+POST /items/lost               — JWT, multipart (image optional)
+POST /items/found              — JWT, multipart (image optional)
+PATCH /items/lost/{id}/close   — JWT, owner only → status = closed
+PATCH /items/found/{id}/claim  — JWT, any verified user → status = claimed
+POST /items/report             — JWT, body: {target_type, target_id, reason}
+```
+
+---
+
+### Moderation
+
+```
+GET  /admin/reports            — moderator, paginated, ?status=pending
+POST /admin/reports/{id}/resolve — moderator, body: {action: resolved|dismissed}
+GET  /admin/users              — moderator, paginated
+PATCH /admin/users/{id}/role   — admin only, body: {role}
+```
+
+---
+
+## Frontend API layer
+
+### src/api/auth.js
+```
+firebaseLogin(firebaseToken)
+completeProfile(name, registerNumber, dept, batchYear, phone?)
+getMe()
+```
+
+### src/api/borrow.js
+```
+getListings(filters, page)
+createListing(formData)
+deleteListing(id)
+getListing(id)
+requestBorrow(listingId, reason, from, until)
+getMyRequests(page)
+getMyListingRequests(page)
+approveRequest(id)
+rejectRequest(id)
+confirmReturn(id)
+```
+
+### src/api/requests.js
+```
+getRequests(filters, page)
+createRequest(data)
+deleteRequest(id)
+respondToRequest(requestId, message)
+getResponses(requestId)
+fulfillRequest(requestId)
+```
+
+### src/api/items.js
+```
+getLostItems(filters, page)
+getFoundItems(filters, page)
+postLostItem(formData)
+postFoundItem(formData)
+closeLostItem(id)
+claimFoundItem(id)
+reportItem(targetType, targetId, reason)
+```
+
+---
+
+## Supabase Realtime
+
+Used in frontend only. No backend changes needed.
+
+| Table | Event | Hook |
+|---|---|---|
+| borrow_requests | UPDATE | useBorrow.js |
+| lost_items | UPDATE | useItems.js |
+| found_items | UPDATE | useItems.js |
+
+Pattern — always clean up:
+```javascript
+useEffect(() => {
+  const channel = supabase
+    .channel('borrow_updates')
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'borrow_requests' },
+      (payload) => { /* update local state */ }
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}, [])
+```
+
+---
+
+## CI/CD
+
+`.github/workflows/deploy.yml`:
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy
+        run: curl -X POST ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+```
+
+GitHub Secrets needed:
+```
+RENDER_DEPLOY_HOOK_URL
+VERCEL_DEPLOY_HOOK_URL
+```
+
+---
+
+## Design rules
+
+- Font: Inter only (Google Fonts)
+- Icons: Lucide React only
+- No emojis anywhere
+- No purple, violet, indigo, gradient, glassmorphism
+- Loading state: skeleton loaders, not spinners
+- Colours — use CSS variables only:
+
+```css
+:root {
+  --color-primary:      #1B4332;
+  --color-primary-lt:   #2D6A4F;
+  --color-accent:       #D4A017;
+  --color-bg:           #F8F7F4;
+  --color-surface:      #FFFFFF;
+  --color-border:       #E2DDD6;
+  --color-text:         #1A1A1A;
+  --color-text-muted:   #6B6560;
+  --color-error:        #C0392B;
+  --color-success:      #1B6B3A;
+}
+```
+
+---
+
+## Build order
+
+```
+Phase 1 — Backend (3–4 sessions)
+  1. Supabase: run schema SQL, create storage buckets
+  2. FastAPI skeleton: main.py, requirements.txt, .env.example, /health → deploy to Render
+  3. app/db.py + app/utils/email_parser.py
+  4. app/dependencies.py — Firebase token verify + get_current_user + require_moderator
+  5. app/models/auth.py + app/routers/auth.py — 3 endpoints
+  6. app/models/borrow.py + app/routers/borrow.py — 10 endpoints
+  7. app/models/requests.py + app/routers/requests.py — 6 endpoints
+  8. app/models/items.py + app/routers/items.py — 7 endpoints
+  9. app/routers/moderation.py — 4 endpoints
+  10. Test every endpoint via /docs
+
+Phase 2 — Frontend (4–5 sessions)
+  11. Vite + React + Tailwind setup, Inter font, CSS variables, deploy shell to Vercel
+  12. src/lib/firebase.js + src/lib/supabase.js
+  13. AuthContext + all 4 api/ files
+  14. Login page + CompleteProfile page
+  15. Dashboard page
+  16. BorrowLend + PostLending pages + Realtime in useBorrow
+  17. ItemRequests + PostRequest pages
+  18. LostAndFound + PostItem pages + Realtime in useItems
+  19. Admin ModerationQueue page
+  20. Set up GitHub Actions deploy hooks
+```
+
+---
+
+## What is NOT in v1
+
+- Email notifications
+- AI image matching
+- Trust score system
+- Sentry error tracking
+- Test pipeline in CI
+- Dark mode
+- PWA or service worker
+- Terms & Conditions page
+- ID card upload or OCR
