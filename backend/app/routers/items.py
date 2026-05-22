@@ -16,15 +16,16 @@ from app.models.items import (
 
 router = APIRouter()
 
-def compress(b: bytes, w: int = 800) -> bytes:
+def compress(b: bytes, w: int = 600) -> bytes:
     img = Image.open(io.BytesIO(b))
     if img.width > w:
         img = img.resize((w, int(img.height*w/img.width)), Image.LANCZOS)
     out = io.BytesIO()
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
-    img.save(out, format="JPEG", quality=75)
+    img.save(out, format="JPEG", quality=50, optimize=True)
     return out.getvalue()
+
 
 @router.get("/lost", response_model=PaginatedLostItems)
 async def get_lost_items(
@@ -172,11 +173,17 @@ async def close_lost_item(id: str, current_user: CurrentUser = Depends(get_curre
 
 @router.patch("/found/{id}/claim")
 async def claim_found_item(id: str, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, str]:
-    res = supabase.table("found_items").select("id").eq("id", id).maybe_single().execute()
+    res = supabase.table("found_items").select("id, description").eq("id", id).maybe_single().execute()
     if not res.data:
         raise HTTPException(404, detail={"error": "NOT_FOUND", "message": "Found item not found"})
         
-    supabase.table("found_items").update({"status": "claimed"}).eq("id", id).execute()
+    desc = res.data.get("description") or ""
+    new_desc = f"{desc}\n[Claimed By: {current_user.id}]" if desc else f"[Claimed By: {current_user.id}]"
+    
+    supabase.table("found_items").update({
+        "status": "claimed",
+        "description": new_desc
+    }).eq("id", id).execute()
     return {"message": "Found item claimed successfully"}
 
 @router.post("/report", response_model=ReportResponse)

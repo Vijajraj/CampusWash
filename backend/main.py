@@ -26,3 +26,11 @@ app.include_router(moderation.router, prefix="/api/v1/admin")
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+import asyncio
+from app.utils.cleanup import cleanup_background_loop
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(cleanup_background_loop())
+

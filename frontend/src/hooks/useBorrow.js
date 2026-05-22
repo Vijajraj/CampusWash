@@ -26,7 +26,7 @@ export function useListings(filters, page) {
     } finally {
       setLoading(false);
     }
-  }, [filters, page]);
+  }, [filters.type, filters.size, page]);
 
   useEffect(() => {
     fetchData();

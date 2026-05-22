@@ -14,14 +14,14 @@ from app.models.borrow import (
 
 router = APIRouter()
 
-def compress(b: bytes, w: int = 800) -> bytes:
+def compress(b: bytes, w: int = 600) -> bytes:
     img = Image.open(io.BytesIO(b))
     if img.width > w:
         img = img.resize((w, int(img.height*w/img.width)), Image.LANCZOS)
     out = io.BytesIO()
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
-    img.save(out, format="JPEG", quality=75)
+    img.save(out, format="JPEG", quality=50, optimize=True)
     return out.getvalue()
 
 @router.get("/listings", response_model=PaginatedListings)
