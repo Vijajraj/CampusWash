@@ -151,10 +151,49 @@ function AppContent() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-bg flex items-center justify-center p-8 font-sans">
+          <div className="w-full max-w-lg bg-surface border border-error/20 p-8 rounded-xl shadow-sm text-center">
+            <h1 className="text-2xl font-bold text-error mb-4">Application Error</h1>
+            <p className="text-xs text-text-muted mb-6">
+              An unexpected error occurred. Please verify your client configuration and environment variables.
+            </p>
+            <pre className="text-left bg-bg border border-border p-4 rounded-lg text-xs overflow-x-auto font-mono text-error">
+              {this.state.error?.toString()}
+              {"\n"}
+              {this.state.error?.stack}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
