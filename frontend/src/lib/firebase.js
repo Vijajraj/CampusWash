@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
@@ -20,9 +20,7 @@ export const signInWithGoogle = async () => {
     throw new Error("Firebase Authentication is not configured.");
   }
   try {
-    const result = await signInWithPopup(auth, provider);
-    const idToken = await result.user.getIdToken();
-    return idToken;
+    await signInWithRedirect(auth, provider);
   } catch (error) {
     console.error("Firebase Google Sign-In Error:", error);
     throw error;

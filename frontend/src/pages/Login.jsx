@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithGoogle } from "../lib/firebase";
+import { signInWithGoogle, auth } from "../lib/firebase";
+import { getRedirectResult } from "firebase/auth";
 import useAuth from "../hooks/useAuth";
 import { LogIn } from "lucide-react";
 
@@ -10,25 +11,43 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const handleRedirect = async () => {
+      if (!auth) return;
+      try {
+        setLoading(true);
+        const result = await getRedirectResult(auth);
+        if (result) {
+          const idToken = await result.user.getIdToken();
+          const user = await login(idToken);
+          if (user.profile_complete) {
+            navigate("/dashboard");
+          } else {
+            navigate("/complete-profile");
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        if (err.error === "INVALID_COLLEGE_EMAIL") {
+          setError("Access restricted. Only @citchennai.net accounts are permitted.");
+        } else {
+          setError(err.message || "Authentication failed. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleRedirect();
+  }, [login, navigate]);
+
   const handleSignIn = async () => {
     setLoading(true);
     setError("");
     try {
-      const firebaseToken = await signInWithGoogle();
-      const user = await login(firebaseToken);
-      if (user.profile_complete) {
-        navigate("/dashboard");
-      } else {
-        navigate("/complete-profile");
-      }
+      await signInWithGoogle();
     } catch (err) {
       console.error(err);
-      if (err.error === "INVALID_COLLEGE_EMAIL") {
-        setError("Access restricted. Only @citchennai.net accounts are permitted.");
-      } else {
-        setError(err.message || "Authentication failed. Please try again.");
-      }
-    } finally {
+      setError(err.message || "Authentication failed. Please try again.");
       setLoading(false);
     }
   };
