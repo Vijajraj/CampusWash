@@ -94,9 +94,6 @@ const PublicOnlyRoute = () => {
 
 function AppContent() {
   const missingVars = [];
-  if (!import.meta.env.VITE_FIREBASE_API_KEY) missingVars.push("VITE_FIREBASE_API_KEY");
-  if (!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) missingVars.push("VITE_FIREBASE_AUTH_DOMAIN");
-  if (!import.meta.env.VITE_FIREBASE_PROJECT_ID) missingVars.push("VITE_FIREBASE_PROJECT_ID");
   if (!import.meta.env.VITE_SUPABASE_URL) missingVars.push("VITE_SUPABASE_URL");
   if (!import.meta.env.VITE_SUPABASE_ANON_KEY) missingVars.push("VITE_SUPABASE_ANON_KEY");
 

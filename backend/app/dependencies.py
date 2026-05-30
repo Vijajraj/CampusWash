@@ -1,26 +1,9 @@
 import os
-import json
 from dataclasses import dataclass
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-import firebase_admin
-from firebase_admin import credentials
 from app.db import supabase
-
-if not firebase_admin._apps:
-    service_account_val = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "")
-    if service_account_val.endswith(".json"):
-        cred = credentials.Certificate(service_account_val)
-    else:
-        try:
-            cred_dict = json.loads(service_account_val)
-            cred = credentials.Certificate(cred_dict)
-        except json.JSONDecodeError:
-            cred = None
-            
-    if cred:
-        firebase_admin.initialize_app(cred)
 
 bearer_scheme = HTTPBearer()
 

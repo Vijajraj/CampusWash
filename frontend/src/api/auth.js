@@ -28,11 +28,11 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
-export const firebaseLogin = async (firebaseToken) => {
-  const res = await fetch(`${BASE_URL}/auth/firebase-login`, {
+export const supabaseLogin = async (supabaseToken) => {
+  const res = await fetch(`${BASE_URL}/auth/supabase-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ firebase_token: firebaseToken }),
+    body: JSON.stringify({ supabase_token: supabaseToken }),
   });
   return handleResponse(res);
 };

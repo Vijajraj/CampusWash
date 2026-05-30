@@ -1,12 +1,11 @@
 import os
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from firebase_admin import auth as firebase_auth
 from jose import jwt
 
 from app.db import supabase
 from app.models.auth import (
-    FirebaseLoginRequest, FirebaseLoginResponse,
+    SupabaseLoginRequest, SupabaseLoginResponse,
     CompleteProfileRequest, CompleteProfileResponse,
     UserResponse
 )
@@ -20,18 +19,21 @@ def create_jwt(user_id: str) -> str:
     to_encode = {"sub": user_id, "exp": expires}
     return jwt.encode(to_encode, os.getenv("JWT_SECRET", ""), algorithm="HS256")
 
-@router.post("/firebase-login", response_model=FirebaseLoginResponse)
-async def firebase_login(req: FirebaseLoginRequest) -> FirebaseLoginResponse:
+@router.post("/supabase-login", response_model=SupabaseLoginResponse)
+async def supabase_login(req: SupabaseLoginRequest) -> SupabaseLoginResponse:
     try:
-        decoded_token = firebase_auth.verify_id_token(req.firebase_token)
-    except Exception:
+        user_resp = supabase.auth.get_user(req.supabase_token)
+        supabase_user = user_resp.user
+        if not supabase_user:
+            raise ValueError("No user found in session")
+    except Exception as e:
         raise HTTPException(
             status_code=401, 
-            detail={"error": "INVALID_FIREBASE_TOKEN", "message": "Invalid Firebase token"}
+            detail={"error": "INVALID_SUPABASE_TOKEN", "message": f"Invalid Supabase token: {str(e)}"}
         )
     
-    email = decoded_token.get("email", "")
-    firebase_uid = decoded_token.get("uid")
+    email = supabase_user.email
+    supabase_uid = supabase_user.id
     
     if not validate_college_email(email):
         raise HTTPException(
@@ -41,12 +43,12 @@ async def firebase_login(req: FirebaseLoginRequest) -> FirebaseLoginResponse:
     
     parsed = parse_college_email(email)
     
-    result = supabase.table("users").select("*").eq("firebase_uid", firebase_uid).maybe_single().execute()
+    result = supabase.table("users").select("*").eq("firebase_uid", supabase_uid).maybe_single().execute()
     user = result.data
     
     if not user:
         new_user = {
-            "firebase_uid": firebase_uid,
+            "firebase_uid": supabase_uid,
             "email": email,
             "department": parsed.get("department"),
             "batch_year": parsed.get("batch_year"),
@@ -57,7 +59,7 @@ async def firebase_login(req: FirebaseLoginRequest) -> FirebaseLoginResponse:
         user = res.data[0]
         
     access_token = create_jwt(user["id"])
-    return FirebaseLoginResponse(
+    return SupabaseLoginResponse(
         access_token=access_token,
         user_id=user["id"],
         profile_complete=user["profile_complete"],

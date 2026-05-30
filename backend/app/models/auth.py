@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
-class FirebaseLoginRequest(BaseModel):
-    firebase_token: str
+class SupabaseLoginRequest(BaseModel):
+    supabase_token: str
 
-class FirebaseLoginResponse(BaseModel):
+class SupabaseLoginResponse(BaseModel):
     access_token: str
     user_id: str
     profile_complete: bool

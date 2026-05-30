@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithGoogle, auth } from "../lib/firebase";
-import { getRedirectResult } from "firebase/auth";
+import { supabase } from "../lib/supabase";
 import useAuth from "../hooks/useAuth";
 import { LogIn } from "lucide-react";
 
@@ -12,14 +11,16 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleRedirect = async () => {
-      if (!auth) return;
+    const handleSession = async () => {
+      if (!supabase) return;
       try {
         setLoading(true);
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const idToken = await result.user.getIdToken();
-          const user = await login(idToken);
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        
+        if (session) {
+          const token = session.access_token;
+          const user = await login(token);
           if (user.profile_complete) {
             navigate("/dashboard");
           } else {
@@ -33,18 +34,35 @@ export default function Login() {
         } else {
           setError(err.message || "Authentication failed. Please try again.");
         }
+        // If there was an error, clear the invalid session
+        try {
+          await supabase.auth.signOut();
+        } catch (_) {}
       } finally {
         setLoading(false);
       }
     };
-    handleRedirect();
+    handleSession();
   }, [login, navigate]);
 
   const handleSignIn = async () => {
+    if (!supabase) {
+      setError("Supabase connection is not configured.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      await signInWithGoogle();
+      const { error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            hd: "citchennai.net"
+          }
+        }
+      });
+      if (signInError) throw signInError;
     } catch (err) {
       console.error(err);
       setError(err.message || "Authentication failed. Please try again.");

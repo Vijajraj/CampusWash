@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth as firebaseAuth } from "../lib/firebase";
 import { completeProfile, getMe } from "../api/auth";
+import { supabase } from "../lib/supabase";
 import useAuth from "../hooks/useAuth";
 
 export default function CompleteProfile() {
@@ -19,9 +19,19 @@ export default function CompleteProfile() {
   const [regError, setRegError] = useState("");
 
   useEffect(() => {
-    if (firebaseAuth.currentUser) {
-      setName(firebaseAuth.currentUser.displayName || "");
-    }
+    const prefillProfile = async () => {
+      if (supabase) {
+        try {
+          const { data: { user: sbUser } } = await supabase.auth.getUser();
+          if (sbUser) {
+            setName(sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || "");
+          }
+        } catch (err) {
+          console.error("Error fetching user metadata:", err);
+        }
+      }
+    };
+    prefillProfile();
     if (user) {
       setDept(user.department || "");
       setBatchYear(user.batch_year || "");
