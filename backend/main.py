@@ -1,5 +1,12 @@
 import os
+import sys
 import traceback
+
+# Add backend directory to sys.path for Vercel deployment module resolution
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.append(backend_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
