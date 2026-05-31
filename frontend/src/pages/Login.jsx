@@ -11,38 +11,39 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleSession = async () => {
-      if (!supabase) return;
-      try {
-        setLoading(true);
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        
-        if (session) {
-          const token = session.access_token;
-          const user = await login(token);
-          if (user.profile_complete) {
-            navigate("/dashboard");
-          } else {
-            navigate("/complete-profile");
+    if (!supabase) return;
+
+    setLoading(true);
+
+    // Listen for auth state changes — this fires AFTER the OAuth code exchange completes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+          try {
+            const token = session.access_token;
+            const user = await login(token);
+            if (user.profile_complete) {
+              navigate("/dashboard");
+            } else {
+              navigate("/complete-profile");
+            }
+            return; // Don't setLoading(false) — we are navigating away
+          } catch (err) {
+            console.error(err);
+            if (err.error === "INVALID_COLLEGE_EMAIL") {
+              setError("Access restricted. Only @citchennai.net accounts are permitted.");
+            } else {
+              setError(err.message || "Authentication failed. Please try again.");
+            }
+            // Clear the invalid Supabase session
+            try { await supabase.auth.signOut(); } catch (_) {}
           }
         }
-      } catch (err) {
-        console.error(err);
-        if (err.error === "INVALID_COLLEGE_EMAIL") {
-          setError("Access restricted. Only @citchennai.net accounts are permitted.");
-        } else {
-          setError(err.message || "Authentication failed. Please try again.");
-        }
-        // If there was an error, clear the invalid session
-        try {
-          await supabase.auth.signOut();
-        } catch (_) {}
-      } finally {
         setLoading(false);
       }
-    };
-    handleSession();
+    );
+
+    return () => subscription.unsubscribe();
   }, [login, navigate]);
 
   const handleSignIn = async () => {
