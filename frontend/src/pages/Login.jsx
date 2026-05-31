@@ -13,37 +13,53 @@ export default function Login() {
   useEffect(() => {
     if (!supabase) return;
 
-    setLoading(true);
+    const processOAuthCallback = async () => {
+      // Detect OAuth callback: PKCE uses ?code=, implicit uses #access_token=
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const code = urlParams.get("code");
+      const accessTokenInHash = hashParams.get("access_token");
 
-    // Listen for auth state changes — this fires AFTER the OAuth code exchange completes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
-          try {
-            const token = session.access_token;
-            const user = await login(token);
-            if (user.profile_complete) {
-              navigate("/dashboard");
-            } else {
-              navigate("/complete-profile");
-            }
-            return; // Don't setLoading(false) — we are navigating away
-          } catch (err) {
-            console.error(err);
-            if (err.error === "INVALID_COLLEGE_EMAIL") {
-              setError("Access restricted. Only @citchennai.net accounts are permitted.");
-            } else {
-              setError(err.message || "Authentication failed. Please try again.");
-            }
-            // Clear the invalid Supabase session
-            try { await supabase.auth.signOut(); } catch (_) {}
-          }
-        }
-        setLoading(false);
+      if (!code && !accessTokenInHash) {
+        // No OAuth callback — just show the login button
+        return;
       }
-    );
 
-    return () => subscription.unsubscribe();
+      setLoading(true);
+
+      try {
+        // For PKCE flow: manually exchange the authorization code for a session
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+        }
+
+        // Now retrieve the established session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        if (session) {
+          const user = await login(session.access_token);
+          if (user.profile_complete) {
+            navigate("/dashboard");
+          } else {
+            navigate("/complete-profile");
+          }
+          return; // navigating away
+        }
+      } catch (err) {
+        console.error("OAuth callback error:", err);
+        if (err.error === "INVALID_COLLEGE_EMAIL") {
+          setError("Access restricted. Only @citchennai.net accounts are permitted.");
+        } else {
+          setError(err.message || "Authentication failed. Please try again.");
+        }
+        try { await supabase.auth.signOut(); } catch (_) {}
+      }
+      setLoading(false);
+    };
+
+    processOAuthCallback();
   }, [login, navigate]);
 
   const handleSignIn = async () => {
