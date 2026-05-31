@@ -14,41 +14,51 @@ export default function Login() {
     if (!supabase) return;
 
     const processOAuthCallback = async () => {
-      // Detect OAuth callback: PKCE uses ?code=, implicit uses #access_token=
+      const fullUrl = window.location.href;
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const code = urlParams.get("code");
       const accessTokenInHash = hashParams.get("access_token");
 
+      console.log("[Auth] Page loaded. URL:", fullUrl);
+      console.log("[Auth] Code param:", code ? "present" : "absent");
+      console.log("[Auth] Hash token:", accessTokenInHash ? "present" : "absent");
+
       if (!code && !accessTokenInHash) {
-        // No OAuth callback — just show the login button
+        console.log("[Auth] No OAuth callback detected — showing login button");
         return;
       }
 
       setLoading(true);
+      console.log("[Auth] OAuth callback detected, processing...");
 
       try {
-        // For PKCE flow: manually exchange the authorization code for a session
         if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          console.log("[Auth] Exchanging PKCE code for session...");
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          console.log("[Auth] Exchange result:", exchangeData ? "success" : "no data", "error:", exchangeError);
           if (exchangeError) throw exchangeError;
         }
 
-        // Now retrieve the established session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log("[Auth] Session:", session ? "found" : "null", "error:", sessionError);
         if (sessionError) throw sessionError;
 
         if (session) {
+          console.log("[Auth] Sending token to backend for login...");
           const user = await login(session.access_token);
+          console.log("[Auth] Backend login success, profile_complete:", user.profile_complete);
           if (user.profile_complete) {
             navigate("/dashboard");
           } else {
             navigate("/complete-profile");
           }
-          return; // navigating away
+          return;
+        } else {
+          console.log("[Auth] No session after code exchange — login failed");
         }
       } catch (err) {
-        console.error("OAuth callback error:", err);
+        console.error("[Auth] OAuth callback error:", err);
         if (err.error === "INVALID_COLLEGE_EMAIL") {
           setError("Access restricted. Only @citchennai.net accounts are permitted.");
         } else {
