@@ -32,6 +32,11 @@ export default function Login() {
       setLoading(true);
       console.log("[Auth] OAuth callback detected, processing...");
 
+      // Clear the query/hash parameters immediately so we don't try to exchange the code again on re-renders
+      if (window.history.replaceState) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+
       try {
         if (code) {
           console.log("[Auth] Exchanging PKCE code for session...");
