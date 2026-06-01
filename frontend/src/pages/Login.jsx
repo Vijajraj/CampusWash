@@ -10,71 +10,63 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Use a ref to prevent duplicate login calls
+  const handledRef = React.useRef(false);
+
   useEffect(() => {
     if (!supabase) return;
 
-    const processOAuthCallback = async () => {
-      const fullUrl = window.location.href;
-      const urlParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const code = urlParams.get("code");
-      const accessTokenInHash = hashParams.get("access_token");
-
-      console.log("[Auth] Page loaded. URL:", fullUrl);
-      console.log("[Auth] Code param:", code ? "present" : "absent");
-      console.log("[Auth] Hash token:", accessTokenInHash ? "present" : "absent");
-
-      if (!code && !accessTokenInHash) {
-        console.log("[Auth] No OAuth callback detected — showing login button");
-        return;
-      }
-
+    // Show loading spinner if we detect OAuth callback params in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashFragment = window.location.hash;
+    if (urlParams.get("code") || hashFragment.includes("access_token")) {
       setLoading(true);
-      console.log("[Auth] OAuth callback detected, processing...");
+    }
 
-      // Clear the query/hash parameters immediately so we don't try to exchange the code again on re-renders
-      if (window.history.replaceState) {
-        window.history.replaceState(null, "", window.location.pathname);
-      }
+    // Let Supabase handle the PKCE exchange automatically (detectSessionInUrl: true).
+    // We just listen for the result via onAuthStateChange.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("[Auth] onAuthStateChange:", event, session ? "has session" : "no session");
 
-      try {
-        if (code) {
-          console.log("[Auth] Exchanging PKCE code for session...");
-          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          console.log("[Auth] Exchange result:", exchangeData ? "success" : "no data", "error:", exchangeError);
-          if (exchangeError) throw exchangeError;
-        }
+        // Only process actual sign-in events, not initial empty state
+        if (event === "SIGNED_IN" && session && !handledRef.current) {
+          handledRef.current = true;
+          setLoading(true);
+          setError("");
 
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log("[Auth] Session:", session ? "found" : "null", "error:", sessionError);
-        if (sessionError) throw sessionError;
+          try {
+            console.log("[Auth] Sending Supabase token to backend...");
+            const user = await login(session.access_token);
+            console.log("[Auth] Backend login success, profile_complete:", user.profile_complete);
 
-        if (session) {
-          console.log("[Auth] Sending token to backend for login...");
-          const user = await login(session.access_token);
-          console.log("[Auth] Backend login success, profile_complete:", user.profile_complete);
-          if (user.profile_complete) {
-            navigate("/dashboard");
-          } else {
-            navigate("/complete-profile");
+            if (user.profile_complete) {
+              navigate("/dashboard");
+            } else {
+              navigate("/complete-profile");
+            }
+          } catch (err) {
+            console.error("[Auth] Backend login error:", err);
+            handledRef.current = false;
+            if (err.error === "INVALID_COLLEGE_EMAIL") {
+              setError("Access restricted. Only @citchennai.net accounts are permitted.");
+            } else {
+              setError(err.message || "Authentication failed. Please try again.");
+            }
+            try { await supabase.auth.signOut(); } catch (_) {}
+            setLoading(false);
           }
-          return;
-        } else {
-          console.log("[Auth] No session after code exchange — login failed");
         }
-      } catch (err) {
-        console.error("[Auth] OAuth callback error:", err);
-        if (err.error === "INVALID_COLLEGE_EMAIL") {
-          setError("Access restricted. Only @citchennai.net accounts are permitted.");
-        } else {
-          setError(err.message || "Authentication failed. Please try again.");
-        }
-        try { await supabase.auth.signOut(); } catch (_) {}
-      }
-      setLoading(false);
-    };
 
-    processOAuthCallback();
+        // If Supabase finished initialization but there's no session and
+        // we were showing the loading spinner (because URL had ?code=), stop loading.
+        if (event === "INITIAL_SESSION" && !session) {
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, [login, navigate]);
 
   const handleSignIn = async () => {
