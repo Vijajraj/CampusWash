@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { supabaseLogin, getMe } from "../api/auth";
-import { supabase } from "../lib/supabase";
+import { googleLogin, getMe } from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -54,10 +53,10 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (supabaseToken) => {
+  const login = async (googleCredential) => {
     setLoading(true);
     try {
-      const data = await supabaseLogin(supabaseToken);
+      const data = await googleLogin(googleCredential);
       localStorage.setItem("token", data.access_token);
       
       if (data.profile_complete) {
@@ -84,13 +83,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    if (supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (err) {
-        console.error("Error signing out from Supabase:", err);
-      }
-    }
     localStorage.removeItem("token");
     setUser(null);
   };

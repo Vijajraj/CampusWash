@@ -4,6 +4,9 @@ from typing import Optional, Dict, Any
 class SupabaseLoginRequest(BaseModel):
     supabase_token: str
 
+class GoogleLoginRequest(BaseModel):
+    credential: str
+
 class SupabaseLoginResponse(BaseModel):
     access_token: str
     user_id: str

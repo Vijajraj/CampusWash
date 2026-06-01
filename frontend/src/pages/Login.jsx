@@ -1,98 +1,77 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
 import useAuth from "../hooks/useAuth";
-import { LogIn } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const googleBtnRef = useRef(null);
+  const callbackRef = useRef(null);
 
-  // Use a ref to prevent duplicate login calls
-  const handledRef = React.useRef(false);
-
-  useEffect(() => {
-    if (!supabase) return;
-
-    // Show loading spinner if we detect OAuth callback params in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashFragment = window.location.hash;
-    if (urlParams.get("code") || hashFragment.includes("access_token")) {
-      setLoading(true);
-    }
-
-    // Let Supabase handle the PKCE exchange automatically (detectSessionInUrl: true).
-    // We just listen for the result via onAuthStateChange.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("[Auth] onAuthStateChange:", event, session ? "has session" : "no session");
-
-        // Only process actual sign-in events, not initial empty state
-        if (event === "SIGNED_IN" && session && !handledRef.current) {
-          handledRef.current = true;
-          setLoading(true);
-          setError("");
-
-          try {
-            console.log("[Auth] Sending Supabase token to backend...");
-            const user = await login(session.access_token);
-            console.log("[Auth] Backend login success, profile_complete:", user.profile_complete);
-
-            if (user.profile_complete) {
-              navigate("/dashboard");
-            } else {
-              navigate("/complete-profile");
-            }
-          } catch (err) {
-            console.error("[Auth] Backend login error:", err);
-            handledRef.current = false;
-            if (err.error === "INVALID_COLLEGE_EMAIL") {
-              setError("Access restricted. Only @citchennai.net accounts are permitted.");
-            } else {
-              setError(err.message || "Authentication failed. Please try again.");
-            }
-            try { await supabase.auth.signOut(); } catch (_) {}
-            setLoading(false);
-          }
-        }
-
-        // If Supabase finished initialization but there's no session and
-        // we were showing the loading spinner (because URL had ?code=), stop loading.
-        if (event === "INITIAL_SESSION" && !session) {
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [login, navigate]);
-
-  const handleSignIn = async () => {
-    if (!supabase) {
-      setError("Supabase connection is not configured.");
+  // Keep the callback ref updated with the latest closure
+  callbackRef.current = async (response) => {
+    if (!response.credential) {
+      setError("Google Sign-In did not return a credential. Please try again.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const { error: signInError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          queryParams: {
-            hd: "citchennai.net"
-          }
-        }
-      });
-      if (signInError) throw signInError;
+      const user = await login(response.credential);
+      if (user.profile_complete) {
+        navigate("/dashboard");
+      } else {
+        navigate("/complete-profile");
+      }
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Authentication failed. Please try again.");
+      console.error("[Auth] Google login error:", err);
+      if (err.error === "INVALID_COLLEGE_EMAIL") {
+        setError("Access restricted. Only @citchennai.net accounts are permitted.");
+      } else {
+        setError(err.message || "Authentication failed. Please try again.");
+      }
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 50; // 5 seconds max wait
+
+    const initGoogle = () => {
+      if (!window.google?.accounts?.id) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          setTimeout(initGoogle, 100);
+        } else {
+          setError("Failed to load Google Sign-In. Please refresh the page.");
+        }
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: (response) => callbackRef.current(response),
+        auto_select: false,
+        ux_mode: "popup",
+      });
+
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          width: 360,
+          text: "signin_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+        });
+      }
+    };
+
+    initGoogle();
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg font-sans px-4">
@@ -115,20 +94,15 @@ export default function Login() {
 
         {loading ? (
           <div className="space-y-4">
-            {/* Elegant skeleton loader replacing standard spinner */}
             <div className="h-12 bg-border animate-pulse rounded-lg w-full"></div>
             <p className="text-sm text-text-muted animate-pulse">
-              Authenticating with Google...
+              Signing you in...
             </p>
           </div>
         ) : (
-          <button
-            onClick={handleSignIn}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-primary hover:bg-primary-lt text-surface font-medium rounded-lg shadow-sm transition-all duration-250 cursor-pointer active:scale-[0.98]"
-          >
-            <LogIn size={20} className="text-accent" />
-            <span>Sign in with Google</span>
-          </button>
+          <div className="flex justify-center">
+            <div ref={googleBtnRef}></div>
+          </div>
         )}
 
         <div className="mt-8 border-t border-border pt-6">

@@ -96,6 +96,7 @@ function AppContent() {
   const missingVars = [];
   if (!import.meta.env.VITE_SUPABASE_URL) missingVars.push("VITE_SUPABASE_URL");
   if (!import.meta.env.VITE_SUPABASE_ANON_KEY) missingVars.push("VITE_SUPABASE_ANON_KEY");
+  if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) missingVars.push("VITE_GOOGLE_CLIENT_ID");
 
   if (missingVars.length > 0) {
     throw new Error(`Missing Environment Variables: ${missingVars.join(", ")}. Please add them to your environment configuration (or Vercel Project Settings -> Environment Variables) and rebuild the application.`);
