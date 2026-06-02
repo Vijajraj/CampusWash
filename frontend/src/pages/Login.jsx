@@ -1,48 +1,87 @@
-import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { supabase } from "../lib/supabase";
-import { LogIn } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { googleLogin } from "../api/auth";
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const location = useLocation();
+  const googleBtnRef = useRef(null);
 
-  // Pick up any error passed back from the callback page
+  // Pick up any error passed back via URL (e.g. non-college email)
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
-    if (err) setError(decodeURIComponent(err));
-  }, [location.search]);
+    if (err) {
+      setError(decodeURIComponent(err));
+      window.history.replaceState(null, "", "/");
+    }
+  }, []);
 
-  const handleSignIn = async () => {
-    if (!supabase) {
-      setError("Supabase connection is not configured.");
+  useEffect(() => {
+    let retries = 0;
+
+    const init = () => {
+      if (!window.google?.accounts?.id) {
+        if (++retries < 60) setTimeout(init, 100);
+        else setError("Failed to load Google Sign-In. Please refresh.");
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: handleCredential,
+        auto_select: false,
+        ux_mode: "popup",
+        cancel_on_tap_outside: true,
+      });
+
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          width: googleBtnRef.current.offsetWidth || 340,
+          text: "signin_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+        });
+      }
+    };
+
+    init();
+  }, []);
+
+  const handleCredential = async (response) => {
+    if (!response?.credential) {
+      setError("Google Sign-In failed. Please try again.");
       return;
     }
+
     setLoading(true);
     setError("");
+
     try {
-      const { error: signInError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          // Redirect to our dedicated callback page — fully isolated from route guards
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { hd: "citchennai.net" },
-        },
-      });
-      if (signInError) throw signInError;
-      // Page will redirect to Google — no more code needed here
+      const data = await googleLogin(response.credential);
+      // Store JWT then do a hard navigate — bypasses ALL React state timing issues
+      localStorage.setItem("token", data.access_token);
+
+      if (data.profile_complete) {
+        window.location.href = "/dashboard";
+      } else {
+        window.location.href = "/complete-profile";
+      }
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Authentication failed. Please try again.");
+      console.error("[Login] Google login error:", err);
+      if (err.error === "INVALID_COLLEGE_EMAIL") {
+        setError("Access restricted. Only @citchennai.net accounts are permitted.");
+      } else {
+        setError(err.message || "Authentication failed. Please try again.");
+      }
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg font-sans px-4">
-      <div className="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-8 text-center transition-all duration-300">
+      <div className="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-8 text-center">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-primary mb-2">
             CampusWash
@@ -60,20 +99,14 @@ export default function Login() {
         )}
 
         {loading ? (
-          <div className="space-y-4">
-            <div className="h-12 bg-border animate-pulse rounded-lg w-full"></div>
-            <p className="text-sm text-text-muted animate-pulse">
-              Redirecting to Google...
-            </p>
+          <div className="space-y-3">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-sm text-text-muted">Signing you in...</p>
           </div>
         ) : (
-          <button
-            onClick={handleSignIn}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-primary hover:bg-primary-lt text-surface font-medium rounded-lg shadow-sm transition-all duration-250 cursor-pointer active:scale-[0.98]"
-          >
-            <LogIn size={20} className="text-accent" />
-            <span>Sign in with Google</span>
-          </button>
+          <div className="flex justify-center">
+            <div ref={googleBtnRef} className="w-full max-w-[340px]"></div>
+          </div>
         )}
 
         <div className="mt-8 border-t border-border pt-6">
