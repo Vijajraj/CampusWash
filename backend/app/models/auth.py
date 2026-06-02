@@ -5,7 +5,7 @@ class SupabaseLoginRequest(BaseModel):
     supabase_token: str
 
 class GoogleLoginRequest(BaseModel):
-    credential: str
+    code: str
 
 class SupabaseLoginResponse(BaseModel):
     access_token: str

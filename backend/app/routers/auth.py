@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from jose import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+import httpx
 
 from app.db import supabase
 from app.models.auth import (
@@ -18,6 +19,7 @@ from app.utils.email_parser import validate_college_email, parse_college_email
 router = APIRouter()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 def create_jwt(user_id: str) -> str:
     expires = datetime.now(timezone.utc) + timedelta(days=30)
@@ -73,14 +75,48 @@ async def supabase_login(req: SupabaseLoginRequest) -> SupabaseLoginResponse:
 
 @router.post("/google-login", response_model=SupabaseLoginResponse)
 async def google_login(req: GoogleLoginRequest) -> SupabaseLoginResponse:
-    if not GOOGLE_CLIENT_ID:
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(
             status_code=500,
-            detail={"error": "CONFIG_ERROR", "message": "Google Client ID not configured on server"}
+            detail={"error": "CONFIG_ERROR", "message": "Google Client configuration missing on server"}
         )
+    
+    # Exchange auth code for tokens
+    async with httpx.AsyncClient() as client:
+        try:
+            token_res = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": req.code,
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": "postmessage",
+                    "grant_type": "authorization_code",
+                }
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail={"error": "NETWORK_ERROR", "message": f"Failed to connect to Google OAuth: {str(e)}"}
+            )
+
+    if token_res.status_code != 200:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "OAUTH_EXCHANGE_FAILED", "message": f"Google auth code exchange failed: {token_res.text}"}
+        )
+
+    token_data = token_res.json()
+    id_token_val = token_data.get("id_token")
+    if not id_token_val:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "NO_ID_TOKEN", "message": "Google response did not contain an ID token"}
+        )
+
     try:
         idinfo = id_token.verify_oauth2_token(
-            req.credential,
+            id_token_val,
             google_requests.Request(),
             GOOGLE_CLIENT_ID
         )

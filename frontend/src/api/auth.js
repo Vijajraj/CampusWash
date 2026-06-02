@@ -37,11 +37,11 @@ export const supabaseLogin = async (supabaseToken) => {
   return handleResponse(res);
 };
 
-export const googleLogin = async (credential) => {
+export const googleLogin = async (code) => {
   const res = await fetch(`${BASE_URL}/auth/google-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify({ code }),
   });
   return handleResponse(res);
 };

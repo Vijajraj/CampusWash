@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 // Import Pages
 import Login from "./pages/Login";
@@ -202,11 +203,14 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <GoogleOAuthProvider clientId={clientId}>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   );
 }
