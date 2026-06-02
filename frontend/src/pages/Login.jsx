@@ -48,12 +48,15 @@ export default function Login() {
           </div>
         )}
 
-        {status === "loading" ? (
+        {status === "loading" && (
           <div className="flex flex-col items-center gap-3 py-4">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             <p className="text-sm text-text-muted font-medium">Signing you in...</p>
           </div>
-        ) : (
+        )}
+
+        {/* Google sign-in button: always in DOM, toggled via style to prevent iframe breakages */}
+        <div style={{ display: status === "loading" ? "none" : "block" }}>
           <button
             onClick={() => login()}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all font-medium text-gray-700 cursor-pointer duration-200"
@@ -66,7 +69,7 @@ export default function Login() {
             </svg>
             Continue with Google
           </button>
-        )}
+        </div>
 
         <p className="mt-6 text-xs text-text-muted">Only @citchennai.net accounts are permitted.</p>
       </div>
