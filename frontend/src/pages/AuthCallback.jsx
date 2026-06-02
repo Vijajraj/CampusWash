@@ -1,67 +1,55 @@
 import React, { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { supabaseLogin } from "../api/auth";
-import useAuth from "../hooks/useAuth";
 
-// Dedicated OAuth callback page — completely isolated from route guards.
-// Supabase redirects here after Google authentication with ?code=...
+// Google redirects here after authentication.
+// Supabase has already exchanged the code for a session automatically
+// (detectSessionInUrl: true is the default). We just read the session,
+// call our backend, store our JWT, then navigate.
 export default function AuthCallback() {
-  const navigate = useNavigate();
-  const { refreshUser } = useAuth();
-  const handled = useRef(false);
+  const done = useRef(false);
 
   useEffect(() => {
-    if (handled.current) return;
-    handled.current = true;
+    if (done.current) return;
+    done.current = true;
 
-    const handleCallback = async () => {
+    const finish = async () => {
       try {
-        // Supabase auto-detects ?code= and does the PKCE exchange internally
-        // (detectSessionInUrl: true). Poll briefly for the session.
-        let session = null;
-        for (let i = 0; i < 10; i++) {
-          const { data, error } = await supabase.auth.getSession();
-          if (error) throw error;
-          if (data?.session) {
-            session = data.session;
-            break;
-          }
-          await new Promise((r) => setTimeout(r, 300));
+        // Wait for Supabase to finish its internal code exchange
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (!data.session) {
+          // Give Supabase a moment if session isn't ready yet
+          await new Promise((r) => setTimeout(r, 1000));
+          const retry = await supabase.auth.getSession();
+          if (!retry.data?.session) throw new Error("Sign in failed — please try again.");
+          data.session = retry.data.session;
         }
 
-        if (!session) throw new Error("No session received from Google. Please try again.");
-
-        // Exchange Supabase session for our app JWT
-        const result = await supabaseLogin(session.access_token);
+        // Send Supabase access token to our backend, get our app JWT
+        const result = await supabaseLogin(data.session.access_token);
         localStorage.setItem("token", result.access_token);
 
-        // Update the AuthContext user state
-        await refreshUser();
+        // Hard navigate so initAuth() in AuthContext reads the new token cleanly
+        window.location.href = result.profile_complete ? "/dashboard" : "/complete-profile";
 
-        if (result.profile_complete) {
-          navigate("/dashboard", { replace: true });
-        } else {
-          navigate("/complete-profile", { replace: true });
-        }
       } catch (err) {
-        console.error("[AuthCallback] Error:", err);
-        const msg = encodeURIComponent(
-          err.message || "Authentication failed. Please try again."
-        );
-        navigate(`/?error=${msg}`, { replace: true });
+        console.error("[AuthCallback]", err);
+        const msg = encodeURIComponent(err.message || "Authentication failed.");
+        window.location.href = `/?error=${msg}`;
       }
     };
 
-    handleCallback();
-  }, [navigate, refreshUser]);
+    finish();
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg font-sans">
       <div className="text-center space-y-4">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p className="text-text-muted text-sm font-medium">Signing you in...</p>
-        <p className="text-text-muted text-xs">Please wait, do not refresh.</p>
+        <p className="text-text-muted text-xs">Please do not close or refresh.</p>
       </div>
     </div>
   );
