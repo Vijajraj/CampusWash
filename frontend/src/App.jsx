@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Import Pages
 import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback";
 import CompleteProfile from "./pages/CompleteProfile";
 import Dashboard from "./pages/Dashboard";
 import BorrowLend from "./pages/BorrowLend";
@@ -127,6 +128,9 @@ function AppContent() {
           <Route element={<PublicOnlyRoute />}>
             <Route path="/" element={<Login />} />
           </Route>
+
+          {/* OAuth callback — must be outside all guards */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Unverified only: complete profile */}
           <Route element={<UnverifiedRoutes />}>

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { googleLogin, getMe } from "../api/auth";
+import { getMe } from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -22,8 +22,7 @@ const decodeToken = (token) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [initializing, setInitializing] = useState(true); // true only during startup
-  const [loading, setLoading] = useState(false); // true during login action
+  const [initializing, setInitializing] = useState(true);
 
   const initAuth = async () => {
     const token = localStorage.getItem("token");
@@ -54,32 +53,25 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (googleCredential) => {
-    setLoading(true);
+  // Called by AuthCallback after it stores the JWT in localStorage
+  const refreshUser = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
     try {
-      const data = await googleLogin(googleCredential);
-      localStorage.setItem("token", data.access_token);
-      
-      if (data.profile_complete) {
-        const userData = await getMe();
-        setUser(userData);
-        return userData;
-      } else {
-        const userObj = {
-          id: data.user_id,
-          profile_complete: false,
-          department: data.parsed?.department,
-          batch_year: data.parsed?.batch_year,
-        };
-        setUser(userObj);
-        return userObj;
-      }
+      const userData = await getMe();
+      setUser(userData);
+      return userData;
     } catch (error) {
+      if (error && error.error === "INCOMPLETE_PROFILE") {
+        const decoded = decodeToken(token);
+        if (decoded && decoded.sub) {
+          const partial = { id: decoded.sub, profile_complete: false };
+          setUser(partial);
+          return partial;
+        }
+      }
       localStorage.removeItem("token");
       setUser(null);
-      throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -95,8 +87,8 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
-        loading: initializing, // route guards only block on startup, not login actions
-        login,
+        loading: initializing,
+        refreshUser,
         logout,
         isAuthenticated,
         profileComplete,

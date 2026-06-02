@@ -1,72 +1,44 @@
-import React, { useState, useEffect, useRef } from "react";
-import useAuth from "../hooks/useAuth";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { LogIn } from "lucide-react";
 
 export default function Login() {
-  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const googleBtnRef = useRef(null);
-  const callbackRef = useRef(null);
+  const location = useLocation();
 
-  // Keep the callback ref updated with the latest closure
-  callbackRef.current = async (response) => {
-    if (!response.credential) {
-      setError("Google Sign-In did not return a credential. Please try again.");
+  // Pick up any error passed back from the callback page
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const err = params.get("error");
+    if (err) setError(decodeURIComponent(err));
+  }, [location.search]);
+
+  const handleSignIn = async () => {
+    if (!supabase) {
+      setError("Supabase connection is not configured.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      // login() updates AuthContext user state.
-      // PublicOnlyRoute will automatically redirect once isAuthenticated=true.
-      await login(response.credential);
+      const { error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          // Redirect to our dedicated callback page — fully isolated from route guards
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: { hd: "citchennai.net" },
+        },
+      });
+      if (signInError) throw signInError;
+      // Page will redirect to Google — no more code needed here
     } catch (err) {
-      console.error("[Auth] Google login error:", err);
-      if (err.error === "INVALID_COLLEGE_EMAIL") {
-        setError("Access restricted. Only @citchennai.net accounts are permitted.");
-      } else {
-        setError(err.message || "Authentication failed. Please try again.");
-      }
+      console.error(err);
+      setError(err.message || "Authentication failed. Please try again.");
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 50; // 5 seconds max wait
-
-    const initGoogle = () => {
-      if (!window.google?.accounts?.id) {
-        retryCount++;
-        if (retryCount < maxRetries) {
-          setTimeout(initGoogle, 100);
-        } else {
-          setError("Failed to load Google Sign-In. Please refresh the page.");
-        }
-        return;
-      }
-
-      window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        callback: (response) => callbackRef.current(response),
-        auto_select: false,
-        ux_mode: "popup",
-      });
-
-      if (googleBtnRef.current) {
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: "outline",
-          size: "large",
-          width: 360,
-          text: "signin_with",
-          shape: "rectangular",
-          logo_alignment: "left",
-        });
-      }
-    };
-
-    initGoogle();
-  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg font-sans px-4">
@@ -76,7 +48,7 @@ export default function Login() {
             CampusWash
           </h1>
           <p className="text-sm text-text-muted">
-            The exclusive clothing share & board platform for CIT Chennai.
+            The exclusive clothing share &amp; board platform for CIT Chennai.
           </p>
         </div>
 
@@ -91,13 +63,17 @@ export default function Login() {
           <div className="space-y-4">
             <div className="h-12 bg-border animate-pulse rounded-lg w-full"></div>
             <p className="text-sm text-text-muted animate-pulse">
-              Signing you in...
+              Redirecting to Google...
             </p>
           </div>
         ) : (
-          <div className="flex justify-center">
-            <div ref={googleBtnRef}></div>
-          </div>
+          <button
+            onClick={handleSignIn}
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-primary hover:bg-primary-lt text-surface font-medium rounded-lg shadow-sm transition-all duration-250 cursor-pointer active:scale-[0.98]"
+          >
+            <LogIn size={20} className="text-accent" />
+            <span>Sign in with Google</span>
+          </button>
         )}
 
         <div className="mt-8 border-t border-border pt-6">
