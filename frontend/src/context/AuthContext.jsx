@@ -22,7 +22,8 @@ const decodeToken = (token) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true); // true only during startup
+  const [loading, setLoading] = useState(false); // true during login action
 
   const initAuth = async () => {
     const token = localStorage.getItem("token");
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     }
-    setLoading(false);
+    setInitializing(false);
   };
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        loading: initializing, // route guards only block on startup, not login actions
         login,
         logout,
         isAuthenticated,

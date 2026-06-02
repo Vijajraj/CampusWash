@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
 export default function Login() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
   const googleBtnRef = useRef(null);
   const callbackRef = useRef(null);
 
@@ -19,12 +17,9 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const user = await login(response.credential);
-      if (user.profile_complete) {
-        navigate("/dashboard");
-      } else {
-        navigate("/complete-profile");
-      }
+      // login() updates AuthContext user state.
+      // PublicOnlyRoute will automatically redirect once isAuthenticated=true.
+      await login(response.credential);
     } catch (err) {
       console.error("[Auth] Google login error:", err);
       if (err.error === "INVALID_COLLEGE_EMAIL") {
