@@ -20,11 +20,12 @@
     },
     {
       "src": "/assets/(.*)",
-      "dest": "frontend/assets/$1"
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "dest": "/assets/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "frontend/index.html"
+      "dest": "/index.html"
     }
   ],
   "crons": [
