@@ -11,8 +11,7 @@ export default function Login() {
       setStatus("loading");
       try {
         const data = await googleLogin(codeResponse.code);
-        localStorage.setItem("token", data.access_token);
-        // Hard redirect — avoids all React state timing issues
+        // Token is set as HTTPOnly cookie by FastAPI, no localStorage needed
         window.location.href = data.profile_complete ? "/dashboard" : "/complete-profile";
       } catch (err) {
         setErrorMsg(

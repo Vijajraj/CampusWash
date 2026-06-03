@@ -1,14 +1,9 @@
 import { BASE_URL } from "./config";
 
 const getHeaders = () => {
-  const token = localStorage.getItem("token");
-  const headers = {
+  return {
     "Content-Type": "application/json",
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
 };
 
 const handleResponse = async (response) => {
@@ -36,6 +31,7 @@ export const getReports = async (status = "", page = 1) => {
   const res = await fetch(`${BASE_URL}/admin/reports?${queryParams.toString()}`, {
     method: "GET",
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -45,6 +41,7 @@ export const resolveReport = async (id, action) => {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ action }),
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -53,6 +50,7 @@ export const getUsersList = async (page = 1) => {
   const res = await fetch(`${BASE_URL}/admin/users?page=${page}`, {
     method: "GET",
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -62,6 +60,7 @@ export const updateUserRole = async (id, role) => {
     method: "PATCH",
     headers: getHeaders(),
     body: JSON.stringify({ role }),
+    credentials: "include",
   });
   return handleResponse(res);
 };

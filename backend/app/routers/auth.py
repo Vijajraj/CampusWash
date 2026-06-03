@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from jose import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -27,7 +27,7 @@ def create_jwt(user_id: str) -> str:
     return jwt.encode(to_encode, os.getenv("JWT_SECRET", ""), algorithm="HS256")
 
 @router.post("/supabase-login", response_model=SupabaseLoginResponse)
-async def supabase_login(req: SupabaseLoginRequest) -> SupabaseLoginResponse:
+async def supabase_login(req: SupabaseLoginRequest, response: Response) -> SupabaseLoginResponse:
     try:
         user_resp = supabase.auth.get_user(req.supabase_token)
         supabase_user = user_resp.user
@@ -66,6 +66,18 @@ async def supabase_login(req: SupabaseLoginRequest) -> SupabaseLoginResponse:
         user = res.data[0]
         
     access_token = create_jwt(user["id"])
+    
+    # Set HTTPOnly Cookie
+    response.set_cookie(
+        key="token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        path="/",
+        max_age=30 * 24 * 3600  # 30 days
+    )
+    
     return SupabaseLoginResponse(
         access_token=access_token,
         user_id=user["id"],
@@ -74,7 +86,7 @@ async def supabase_login(req: SupabaseLoginRequest) -> SupabaseLoginResponse:
     )
 
 @router.post("/google-login", response_model=SupabaseLoginResponse)
-async def google_login(req: GoogleLoginRequest) -> SupabaseLoginResponse:
+async def google_login(req: GoogleLoginRequest, response: Response) -> SupabaseLoginResponse:
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(
             status_code=500,
@@ -154,6 +166,18 @@ async def google_login(req: GoogleLoginRequest) -> SupabaseLoginResponse:
         user = res.data[0]
 
     access_token = create_jwt(user["id"])
+    
+    # Set HTTPOnly Cookie
+    response.set_cookie(
+        key="token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        path="/",
+        max_age=30 * 24 * 3600  # 30 days
+    )
+    
     return SupabaseLoginResponse(
         access_token=access_token,
         user_id=user["id"],
@@ -161,8 +185,20 @@ async def google_login(req: GoogleLoginRequest) -> SupabaseLoginResponse:
         parsed=parsed
     )
 
+@router.post("/logout")
+async def logout(response: Response):
+    # Clear HTTPOnly Cookie
+    response.delete_cookie(
+        key="token",
+        path="/",
+        httponly=True,
+        secure=True,
+        samesite="lax"
+    )
+    return {"message": "Logged out successfully"}
+
 @router.post("/complete-profile", response_model=CompleteProfileResponse)
-async def complete_profile(req: CompleteProfileRequest, current_user: CurrentUser = Depends(get_unverified_user)) -> CompleteProfileResponse:
+async def complete_profile(req: CompleteProfileRequest, response: Response, current_user: CurrentUser = Depends(get_unverified_user)) -> CompleteProfileResponse:
     res = supabase.table("users").select("id").eq("register_number", req.register_number).neq("id", current_user.id).execute()
     if res.data:
         raise HTTPException(
@@ -176,6 +212,18 @@ async def complete_profile(req: CompleteProfileRequest, current_user: CurrentUse
     supabase.table("users").update(update_data).eq("id", current_user.id).execute()
     
     new_token = create_jwt(current_user.id)
+    
+    # Update HTTPOnly Cookie with new token containing updated claims
+    response.set_cookie(
+        key="token",
+        value=new_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        path="/",
+        max_age=30 * 24 * 3600  # 30 days
+    )
+    
     return CompleteProfileResponse(
         message="Profile completed successfully",
         access_token=new_token

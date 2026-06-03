@@ -1,11 +1,12 @@
 import os
 from dataclasses import dataclass
-from fastapi import Depends, HTTPException
+from typing import Optional
+from fastapi import Depends, HTTPException, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from app.db import supabase
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 @dataclass
 class CurrentUser:
@@ -14,10 +15,23 @@ class CurrentUser:
     role: str
     profile_complete: bool
 
-async def get_unverified_user(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> CurrentUser:
+async def get_unverified_user(
+    token: Optional[str] = Cookie(None),
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+) -> CurrentUser:
+    jwt_token = token
+    if not jwt_token and creds:
+        jwt_token = creds.credentials
+        
+    if not jwt_token:
+        raise HTTPException(
+            status_code=401,
+            detail={"error": "UNAUTHORIZED", "message": "Not authenticated"}
+        )
+        
     try:
         payload = jwt.decode(
-            creds.credentials,
+            jwt_token,
             os.getenv("JWT_SECRET", ""),
             algorithms=["HS256"]
         )
@@ -49,7 +63,12 @@ async def get_current_user(user: CurrentUser = Depends(get_unverified_user)) -> 
     if not user.profile_complete:
         raise HTTPException(
             status_code=403,
-            detail={"error": "INCOMPLETE_PROFILE", "message": "Please complete your profile first"}
+            detail={
+                "error": "INCOMPLETE_PROFILE",
+                "message": "Please complete your profile first",
+                "user_id": user.id,
+                "email": user.email
+            }
         )
     return user
 

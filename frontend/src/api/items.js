@@ -1,13 +1,9 @@
 import { BASE_URL } from "./config";
 
 const getHeaders = (isMultipart = false) => {
-  const token = localStorage.getItem("token");
   const headers = {};
   if (!isMultipart) {
     headers["Content-Type"] = "application/json";
-  }
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
 };
@@ -35,7 +31,9 @@ export const getLostItems = async (filters = {}, page = 1) => {
   if (filters.type) queryParams.append("type", filters.type);
   if (filters.color) queryParams.append("color", filters.color);
 
-  const res = await fetch(`${BASE_URL}/items/lost?${queryParams.toString()}`);
+  const res = await fetch(`${BASE_URL}/items/lost?${queryParams.toString()}`, {
+    credentials: "include",
+  });
   return handleResponse(res);
 };
 
@@ -45,7 +43,9 @@ export const getFoundItems = async (filters = {}, page = 1) => {
   if (filters.type) queryParams.append("type", filters.type);
   if (filters.color) queryParams.append("color", filters.color);
 
-  const res = await fetch(`${BASE_URL}/items/found?${queryParams.toString()}`);
+  const res = await fetch(`${BASE_URL}/items/found?${queryParams.toString()}`, {
+    credentials: "include",
+  });
   return handleResponse(res);
 };
 
@@ -54,6 +54,7 @@ export const postLostItem = async (formData) => {
     method: "POST",
     headers: getHeaders(true),
     body: formData,
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -63,6 +64,7 @@ export const postFoundItem = async (formData) => {
     method: "POST",
     headers: getHeaders(true),
     body: formData,
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -71,6 +73,7 @@ export const closeLostItem = async (id) => {
   const res = await fetch(`${BASE_URL}/items/lost/${id}/close`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -79,6 +82,7 @@ export const claimFoundItem = async (id) => {
   const res = await fetch(`${BASE_URL}/items/found/${id}/claim`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -92,6 +96,7 @@ export const reportItem = async (targetType, targetId, reason) => {
       target_id: targetId,
       reason,
     }),
+    credentials: "include",
   });
   return handleResponse(res);
 };
