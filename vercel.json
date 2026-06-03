@@ -26,5 +26,11 @@
       "src": "/(.*)",
       "dest": "frontend/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/admin/cleanup",
+      "schedule": "0 0 * * *"
+    }
   ]
 }
