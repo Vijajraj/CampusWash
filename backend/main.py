@@ -13,6 +13,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Startup Environment Variable Validation
+REQUIRED_ENV_VARS = [
+    "JWT_SECRET",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_KEY",
+    "CRON_SECRET"
+]
+
+missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
+if missing_vars:
+    raise RuntimeError(
+        f"Server refuse to start. Missing or empty required environment variables: {', '.join(missing_vars)}"
+    )
+
 error_traceback = None
 app = FastAPI()
 
