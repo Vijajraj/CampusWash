@@ -55,9 +55,6 @@ export default function CompleteProfile() {
         phone.trim() || undefined
       );
 
-      // Save the newly generated token that has profile_complete = true
-      localStorage.setItem("token", response.access_token);
-      
       // Fetch the full verified user details and update the AuthContext
       const freshUser = await getMe();
       setUser(freshUser);
