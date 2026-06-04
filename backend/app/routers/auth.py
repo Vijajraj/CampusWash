@@ -67,13 +67,13 @@ async def supabase_login(req: SupabaseLoginRequest, response: Response) -> Supab
         
     access_token = create_jwt(user["id"])
     
-    # Set HTTPOnly Cookie with samesite="none" for cross-domain sharing
+    # Set HTTPOnly Cookie with samesite="lax"
     response.set_cookie(
         key="token",
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
         path="/",
         max_age=30 * 24 * 3600  # 30 days
     )
@@ -167,13 +167,13 @@ async def google_login(req: GoogleLoginRequest, response: Response) -> SupabaseL
 
     access_token = create_jwt(user["id"])
     
-    # Set HTTPOnly Cookie with samesite="none" for cross-domain sharing
+    # Set HTTPOnly Cookie with samesite="lax"
     response.set_cookie(
         key="token",
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
         path="/",
         max_age=30 * 24 * 3600  # 30 days
     )
@@ -187,13 +187,13 @@ async def google_login(req: GoogleLoginRequest, response: Response) -> SupabaseL
 
 @router.post("/logout")
 async def logout(response: Response):
-    # Clear HTTPOnly Cookie with samesite="none"
+    # Clear HTTPOnly Cookie with samesite="lax"
     response.delete_cookie(
         key="token",
         path="/",
         httponly=True,
         secure=True,
-        samesite="none"
+        samesite="lax"
     )
     return {"message": "Logged out successfully"}
 
@@ -213,13 +213,13 @@ async def complete_profile(req: CompleteProfileRequest, response: Response, curr
     
     new_token = create_jwt(current_user.id)
     
-    # Update HTTPOnly Cookie with new token with samesite="none"
+    # Update HTTPOnly Cookie with new token with samesite="lax"
     response.set_cookie(
         key="token",
         value=new_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
         path="/",
         max_age=30 * 24 * 3600  # 30 days
     )
