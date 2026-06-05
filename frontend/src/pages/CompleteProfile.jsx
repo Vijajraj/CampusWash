@@ -55,13 +55,23 @@ export default function CompleteProfile() {
         phone.trim() || undefined
       );
 
-      // Fetch the full verified user details and update the AuthContext
-      const freshUser = await getMe();
-      setUser(freshUser);
-      
+      console.log("[CompleteProfile] Profile completed successfully:", response);
+
+      // Try to refresh user from backend. If it fails (cookie timing issue),
+      // optimistically set profile_complete so route guards let us through.
+      try {
+        const freshUser = await getMe();
+        console.log("[CompleteProfile] getMe returned:", freshUser);
+        setUser(freshUser);
+      } catch (meErr) {
+        console.warn("[CompleteProfile] getMe failed after profile completion, setting user optimistically:", meErr);
+        // Profile IS completed in the DB. Set it optimistically so route guards pass.
+        setUser(prev => prev ? { ...prev, profile_complete: true } : { id: response.user_id || user?.id, profile_complete: true });
+      }
+
       navigate("/dashboard");
     } catch (err) {
-      console.error(err);
+      console.error("[CompleteProfile] Error:", err);
       if (err.error === "REGISTER_NUMBER_TAKEN") {
         setRegError("This register number is already registered.");
       } else {

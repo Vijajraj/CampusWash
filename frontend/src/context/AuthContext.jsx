@@ -9,16 +9,20 @@ export const AuthProvider = ({ children }) => {
 
   const initAuth = async () => {
     try {
+      console.log("[Auth] Initializing — calling getMe()...");
       const userData = await getMe();
+      console.log("[Auth] getMe() succeeded:", userData);
       setUser(userData);
     } catch (error) {
       if (error && error.error === "INCOMPLETE_PROFILE") {
+        console.log("[Auth] User has incomplete profile:", error.email);
         setUser({
           id: error.user_id,
           email: error.email,
           profile_complete: false,
         });
       } else {
+        console.log("[Auth] Not authenticated:", error);
         setUser(null);
       }
     } finally {
@@ -32,11 +36,14 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
+      console.log("[Auth] Refreshing user...");
       const userData = await getMe();
+      console.log("[Auth] refreshUser succeeded:", userData);
       setUser(userData);
       return userData;
     } catch (error) {
       if (error && error.error === "INCOMPLETE_PROFILE") {
+        console.log("[Auth] refreshUser — incomplete profile:", error.email);
         const partialUser = {
           id: error.user_id,
           email: error.email,
@@ -45,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         setUser(partialUser);
         return partialUser;
       }
+      console.log("[Auth] refreshUser failed:", error);
       setUser(null);
     }
   };
