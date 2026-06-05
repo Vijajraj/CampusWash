@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getMe, logout as logoutApi } from "../api/auth";
+import { getMe } from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -8,6 +8,14 @@ export const AuthProvider = ({ children }) => {
   const [initializing, setInitializing] = useState(true);
 
   const initAuth = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.log("[Auth] No local token found. Initializing idle state.");
+      setUser(null);
+      setInitializing(false);
+      return;
+    }
+
     try {
       console.log("[Auth] Initializing — calling getMe()...");
       const userData = await getMe();
@@ -23,6 +31,7 @@ export const AuthProvider = ({ children }) => {
         });
       } else {
         console.log("[Auth] Not authenticated:", error);
+        localStorage.removeItem("token");
         setUser(null);
       }
     } finally {
@@ -35,6 +44,12 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshUser = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+
     try {
       console.log("[Auth] Refreshing user...");
       const userData = await getMe();
@@ -53,18 +68,15 @@ export const AuthProvider = ({ children }) => {
         return partialUser;
       }
       console.log("[Auth] refreshUser failed:", error);
+      localStorage.removeItem("token");
       setUser(null);
+      return null;
     }
   };
 
-  const logout = async () => {
-    try {
-      await logoutApi();
-    } catch (error) {
-      console.error("Failed to clear cookie session on backend:", error);
-    } finally {
-      setUser(null);
-    }
+  const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
   };
 
   const isAuthenticated = !!user;
@@ -94,3 +106,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

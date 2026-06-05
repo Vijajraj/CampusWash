@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.db import supabase
 from app.dependencies import require_moderator, CurrentUser
-from app.utils.cleanup import run_cleanup_job
+
 
 router = APIRouter()
 
@@ -131,27 +131,3 @@ async def update_user_role(
         
     supabase.table("users").update({"role": req.role}).eq("id", id).execute()
     return {"message": f"User role updated to {req.role}"}
-
-@router.get("/cleanup")
-async def trigger_cleanup(
-    x_cron_secret: Optional[str] = Header(None, alias="X-CRON-SECRET"),
-    authorization: Optional[str] = Header(None)
-):
-    cron_secret = os.getenv("CRON_SECRET")
-    if not cron_secret:
-        raise HTTPException(
-            status_code=500,
-            detail={"error": "CONFIG_ERROR", "message": "CRON_SECRET is not configured on the server"}
-        )
-        
-    incoming_secret = x_cron_secret
-    if authorization and authorization.startswith("Bearer "):
-        incoming_secret = authorization.split("Bearer ")[1].strip()
-        
-    if incoming_secret != cron_secret:
-        raise HTTPException(
-            status_code=401,
-            detail={"error": "UNAUTHORIZED", "message": "Invalid cron secret"}
-        )
-        
-    return await run_cleanup_job()

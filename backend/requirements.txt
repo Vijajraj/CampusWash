@@ -7,4 +7,4 @@ python-multipart
 python-dotenv
 pydantic
 Pillow
-google-auth
+firebase-admin

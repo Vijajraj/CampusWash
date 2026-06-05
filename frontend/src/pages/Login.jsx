@@ -1,34 +1,36 @@
 import React, { useState } from "react";
-import { useGoogleLogin } from "@react-oauth/google";
-import { googleLogin } from "../api/auth";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../lib/firebase";
+import { firebaseLogin } from "../api/auth";
 
 export default function Login() {
   const [status, setStatus] = useState("idle"); // idle | loading | error
   const [errorMsg, setErrorMsg] = useState("");
 
-  const login = useGoogleLogin({
-    onSuccess: async (codeResponse) => {
-      setStatus("loading");
-      try {
-        const data = await googleLogin(codeResponse.code);
-        // Token is set as HTTPOnly cookie by FastAPI, no localStorage needed
-        window.location.href = data.profile_complete ? "/dashboard" : "/complete-profile";
-      } catch (err) {
-        setErrorMsg(
-          err.error === "INVALID_COLLEGE_EMAIL"
-            ? "Only @citchennai.net accounts are allowed."
-            : err.message || "Sign in failed. Please try again."
-        );
-        setStatus("error");
+  const handleGoogleSignIn = async () => {
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const idToken = await userCredential.user.getIdToken();
+      const data = await firebaseLogin(idToken);
+      
+      // Store returned backend JWT in localStorage
+      localStorage.setItem("token", data.access_token);
+      
+      window.location.href = data.profile_complete ? "/dashboard" : "/complete-profile";
+    } catch (err) {
+      console.error("Firebase/API Login error:", err);
+      let message = "Sign in failed. Please try again.";
+      if (err.error === "INVALID_COLLEGE_EMAIL") {
+        message = "Only @citchennai.net accounts are allowed.";
+      } else if (err.message) {
+        message = err.message;
       }
-    },
-    onError: (error) => {
-      console.error("Google Login Failed:", error);
-      setErrorMsg("Google Sign-In failed. Please try again.");
+      setErrorMsg(message);
       setStatus("error");
-    },
-    flow: "auth-code",
-  });
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg font-sans px-4">
@@ -54,10 +56,9 @@ export default function Login() {
           </div>
         )}
 
-        {/* Google sign-in button: always in DOM, toggled via style to prevent iframe breakages */}
         <div style={{ display: status === "loading" ? "none" : "block" }}>
           <button
-            onClick={() => login()}
+            onClick={handleGoogleSignIn}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all font-medium text-gray-700 cursor-pointer duration-200"
           >
             <svg width="20" height="20" viewBox="0 0 24 24">
@@ -75,3 +76,4 @@ export default function Login() {
     </div>
   );
 }
+

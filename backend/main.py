@@ -16,13 +16,13 @@ load_dotenv()
 # Startup Environment Variable Validation (non-fatal — log warnings instead of crashing)
 REQUIRED_ENV_VARS = [
     "JWT_SECRET",
-    "GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_SERVICE_ACCOUNT_JSON",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_KEY",
 ]
 # Optional vars that are nice to have but shouldn't crash the server
-OPTIONAL_ENV_VARS = ["CRON_SECRET"]
+OPTIONAL_ENV_VARS = []
 
 missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
 missing_optional = [var for var in OPTIONAL_ENV_VARS if not os.getenv(var)]

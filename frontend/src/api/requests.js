@@ -1,9 +1,14 @@
 import { BASE_URL } from "./config";
 
 const getHeaders = () => {
-  return {
+  const headers = {
     "Content-Type": "application/json",
   };
+  const token = localStorage.getItem("token");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
 };
 
 const handleResponse = async (response) => {
@@ -30,7 +35,7 @@ export const getRequests = async (filters = {}, page = 1) => {
   if (filters.size) queryParams.append("size", filters.size);
 
   const res = await fetch(`${BASE_URL}/requests?${queryParams.toString()}`, {
-    credentials: "include",
+    headers: getHeaders(),
   });
   return handleResponse(res);
 };
@@ -40,7 +45,6 @@ export const createRequest = async (data) => {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(data),
-    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -49,7 +53,6 @@ export const deleteRequest = async (id) => {
   const res = await fetch(`${BASE_URL}/requests/${id}`, {
     method: "DELETE",
     headers: getHeaders(),
-    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -59,7 +62,6 @@ export const respondToRequest = async (requestId, message) => {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ message }),
-    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -68,7 +70,6 @@ export const getResponses = async (requestId) => {
   const res = await fetch(`${BASE_URL}/requests/${requestId}/responses`, {
     method: "GET",
     headers: getHeaders(),
-    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -77,7 +78,7 @@ export const fulfillRequest = async (requestId) => {
   const res = await fetch(`${BASE_URL}/requests/${requestId}/fulfill`, {
     method: "PATCH",
     headers: getHeaders(),
-    credentials: "include",
   });
   return handleResponse(res);
 };
+

@@ -1,7 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 
 // Import Pages
 import Login from "./pages/Login";
@@ -97,7 +96,9 @@ function AppContent() {
   const missingVars = [];
   if (!import.meta.env.VITE_SUPABASE_URL) missingVars.push("VITE_SUPABASE_URL");
   if (!import.meta.env.VITE_SUPABASE_ANON_KEY) missingVars.push("VITE_SUPABASE_ANON_KEY");
-  if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) missingVars.push("VITE_GOOGLE_CLIENT_ID");
+  if (!import.meta.env.VITE_FIREBASE_API_KEY) missingVars.push("VITE_FIREBASE_API_KEY");
+  if (!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) missingVars.push("VITE_FIREBASE_AUTH_DOMAIN");
+  if (!import.meta.env.VITE_FIREBASE_PROJECT_ID) missingVars.push("VITE_FIREBASE_PROJECT_ID");
 
   if (missingVars.length > 0) {
     throw new Error(`Missing Environment Variables: ${missingVars.join(", ")}. Please add them to your environment configuration (or Vercel Project Settings -> Environment Variables) and rebuild the application.`);
@@ -200,14 +201,11 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   return (
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={clientId}>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </GoogleOAuthProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

@@ -1,9 +1,14 @@
 import { BASE_URL } from "./config";
 
 const getHeaders = () => {
-  return {
+  const headers = {
     "Content-Type": "application/json",
   };
+  const token = localStorage.getItem("token");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
 };
 
 const handleResponse = async (response) => {
@@ -23,31 +28,11 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
-export const supabaseLogin = async (supabaseToken) => {
-  const res = await fetch(`${BASE_URL}/auth/supabase-login`, {
+export const firebaseLogin = async (firebaseToken) => {
+  const res = await fetch(`${BASE_URL}/auth/firebase-login`, {
     method: "POST",
     headers: getHeaders(),
-    body: JSON.stringify({ supabase_token: supabaseToken }),
-    credentials: "include",
-  });
-  return handleResponse(res);
-};
-
-export const googleLogin = async (code) => {
-  const res = await fetch(`${BASE_URL}/auth/google-login`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify({ code }),
-    credentials: "include",
-  });
-  return handleResponse(res);
-};
-
-export const logout = async () => {
-  const res = await fetch(`${BASE_URL}/auth/logout`, {
-    method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
+    body: JSON.stringify({ firebase_token: firebaseToken }),
   });
   return handleResponse(res);
 };
@@ -63,7 +48,6 @@ export const completeProfile = async (name, registerNumber, dept, batchYear, pho
       batch_year: batchYear,
       phone,
     }),
-    credentials: "include",
   });
   return handleResponse(res);
 };
@@ -72,7 +56,7 @@ export const getMe = async () => {
   const res = await fetch(`${BASE_URL}/auth/me`, {
     method: "GET",
     headers: getHeaders(),
-    credentials: "include",
   });
   return handleResponse(res);
 };
+

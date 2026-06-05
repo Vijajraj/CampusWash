@@ -1,13 +1,10 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
-class SupabaseLoginRequest(BaseModel):
-    supabase_token: str
+class FirebaseLoginRequest(BaseModel):
+    firebase_token: str
 
-class GoogleLoginRequest(BaseModel):
-    code: str
-
-class SupabaseLoginResponse(BaseModel):
+class LoginResponse(BaseModel):
     access_token: str
     user_id: str
     profile_complete: bool

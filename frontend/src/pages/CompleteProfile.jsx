@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { completeProfile, getMe } from "../api/auth";
-import { supabase } from "../lib/supabase";
+import { auth } from "../lib/firebase";
 import useAuth from "../hooks/useAuth";
 
 export default function CompleteProfile() {
@@ -19,16 +19,10 @@ export default function CompleteProfile() {
   const [regError, setRegError] = useState("");
 
   useEffect(() => {
-    const prefillProfile = async () => {
-      if (supabase) {
-        try {
-          const { data: { user: sbUser } } = await supabase.auth.getUser();
-          if (sbUser) {
-            setName(sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || "");
-          }
-        } catch (err) {
-          console.error("Error fetching user metadata:", err);
-        }
+    const prefillProfile = () => {
+      const fbUser = auth.currentUser;
+      if (fbUser) {
+        setName(fbUser.displayName || "");
       }
     };
     prefillProfile();
@@ -57,17 +51,13 @@ export default function CompleteProfile() {
 
       console.log("[CompleteProfile] Profile completed successfully:", response);
 
-      // Try to refresh user from backend. If it fails (cookie timing issue),
-      // optimistically set profile_complete so route guards let us through.
-      try {
-        const freshUser = await getMe();
-        console.log("[CompleteProfile] getMe returned:", freshUser);
-        setUser(freshUser);
-      } catch (meErr) {
-        console.warn("[CompleteProfile] getMe failed after profile completion, setting user optimistically:", meErr);
-        // Profile IS completed in the DB. Set it optimistically so route guards pass.
-        setUser(prev => prev ? { ...prev, profile_complete: true } : { id: response.user_id || user?.id, profile_complete: true });
-      }
+      // Store returned backend JWT in localStorage
+      localStorage.setItem("token", response.access_token);
+
+      // Retrieve fresh user info with the new token
+      const freshUser = await getMe();
+      console.log("[CompleteProfile] getMe returned:", freshUser);
+      setUser(freshUser);
 
       navigate("/dashboard");
     } catch (err) {
@@ -81,6 +71,7 @@ export default function CompleteProfile() {
       setLoading(false);
     }
   };
+
 
   const isFormInvalid = registerNumber.trim().length < 6;
 
