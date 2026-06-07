@@ -1,7 +1,4 @@
 import os
-import json
-import firebase_admin
-from firebase_admin import credentials
 from dataclasses import dataclass
 from typing import Optional
 from fastapi import Depends, HTTPException
@@ -9,21 +6,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from app.db import supabase
 
-# Initialize Firebase Admin SDK
-if not firebase_admin._apps:
-    service_account_env = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-    if service_account_env:
-        try:
-            if service_account_env.strip().startswith("{"):
-                service_account_info = json.loads(service_account_env)
-                cred = credentials.Certificate(service_account_info)
-            else:
-                cred = credentials.Certificate(service_account_env)
-            firebase_admin.initialize_app(cred)
-        except Exception as e:
-            print(f"⚠️ Failed to initialize Firebase Admin SDK: {e}")
-    else:
-        print("⚠️ FIREBASE_SERVICE_ACCOUNT_JSON is not configured in env")
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

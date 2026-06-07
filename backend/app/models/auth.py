@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
-class FirebaseLoginRequest(BaseModel):
-    firebase_token: str
+class ClerkLoginRequest(BaseModel):
+    clerk_token: str
 
 class LoginResponse(BaseModel):
     access_token: str

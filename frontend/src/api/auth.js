@@ -28,11 +28,11 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
-export const firebaseLogin = async (firebaseToken) => {
-  const res = await fetch(`${BASE_URL}/auth/firebase-login`, {
+export const clerkLogin = async (clerkToken) => {
+  const res = await fetch(`${BASE_URL}/auth/clerk-login`, {
     method: "POST",
     headers: getHeaders(),
-    body: JSON.stringify({ firebase_token: firebaseToken }),
+    body: JSON.stringify({ clerk_token: clerkToken }),
   });
   return handleResponse(res);
 };

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
 import { completeProfile, getMe } from "../api/auth";
-import { auth } from "../lib/firebase";
 import useAuth from "../hooks/useAuth";
 
 export default function CompleteProfile() {
+  const { user: clerkUser } = useUser();
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
 
@@ -20,9 +21,8 @@ export default function CompleteProfile() {
 
   useEffect(() => {
     const prefillProfile = () => {
-      const fbUser = auth.currentUser;
-      if (fbUser) {
-        setName(fbUser.displayName || "");
+      if (clerkUser) {
+        setName(clerkUser.fullName || "");
       }
     };
     prefillProfile();
@@ -30,7 +30,8 @@ export default function CompleteProfile() {
       setDept(user.department || "");
       setBatchYear(user.batch_year || "");
     }
-  }, [user]);
+  }, [user, clerkUser]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();

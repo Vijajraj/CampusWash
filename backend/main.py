@@ -16,8 +16,6 @@ load_dotenv()
 # Startup Environment Variable Validation (non-fatal — log warnings instead of crashing)
 REQUIRED_ENV_VARS = [
     "JWT_SECRET",
-    "FIREBASE_PROJECT_ID",
-    "FIREBASE_SERVICE_ACCOUNT_JSON",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_KEY",
 ]
@@ -30,6 +28,11 @@ missing_optional = [var for var in OPTIONAL_ENV_VARS if not os.getenv(var)]
 if missing_vars:
     print(f"⚠️  WARNING: Missing required environment variables: {', '.join(missing_vars)}", file=sys.stderr)
     print("⚠️  Some features may not work correctly.", file=sys.stderr)
+
+clerk_secret = os.getenv("CLERK_SECRET_KEY")
+clerk_pub = os.getenv("CLERK_PEM_PUBLIC_KEY")
+if not clerk_secret and not clerk_pub:
+    print("⚠️  WARNING: Missing both CLERK_SECRET_KEY and CLERK_PEM_PUBLIC_KEY. Authentication will not function.", file=sys.stderr)
 
 if missing_optional:
     print(f"ℹ️  INFO: Missing optional environment variables: {', '.join(missing_optional)}", file=sys.stderr)

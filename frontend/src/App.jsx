@@ -96,13 +96,12 @@ function AppContent() {
   const missingVars = [];
   if (!import.meta.env.VITE_SUPABASE_URL) missingVars.push("VITE_SUPABASE_URL");
   if (!import.meta.env.VITE_SUPABASE_ANON_KEY) missingVars.push("VITE_SUPABASE_ANON_KEY");
-  if (!import.meta.env.VITE_FIREBASE_API_KEY) missingVars.push("VITE_FIREBASE_API_KEY");
-  if (!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) missingVars.push("VITE_FIREBASE_AUTH_DOMAIN");
-  if (!import.meta.env.VITE_FIREBASE_PROJECT_ID) missingVars.push("VITE_FIREBASE_PROJECT_ID");
+  if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) missingVars.push("VITE_CLERK_PUBLISHABLE_KEY");
 
   if (missingVars.length > 0) {
     throw new Error(`Missing Environment Variables: ${missingVars.join(", ")}. Please add them to your environment configuration (or Vercel Project Settings -> Environment Variables) and rebuild the application.`);
   }
+
 
   const [toast, setToast] = React.useState("");
 

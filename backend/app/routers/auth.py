@@ -2,11 +2,10 @@ import os
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response
 from jose import jwt
-from firebase_admin import auth as firebase_auth
 
 from app.db import supabase
 from app.models.auth import (
-    FirebaseLoginRequest, LoginResponse,
+    ClerkLoginRequest, LoginResponse,
     CompleteProfileRequest, CompleteProfileResponse,
     UserResponse
 )
@@ -15,31 +14,84 @@ from app.utils.email_parser import validate_college_email, parse_college_email
 
 router = APIRouter()
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-
 def create_jwt(user_id: str) -> str:
     expires = datetime.now(timezone.utc) + timedelta(days=30)
     to_encode = {"sub": user_id, "exp": expires}
     return jwt.encode(to_encode, os.getenv("JWT_SECRET", ""), algorithm="HS256")
 
-@router.post("/firebase-login", response_model=LoginResponse)
-async def firebase_login(req: FirebaseLoginRequest) -> LoginResponse:
-    try:
-        decoded_token = firebase_auth.verify_id_token(req.firebase_token)
-    except Exception as e:
+@router.post("/clerk-login", response_model=LoginResponse)
+async def clerk_login(req: ClerkLoginRequest) -> LoginResponse:
+    email = None
+    clerk_uid = None
+    
+    clerk_pub_key = os.getenv("CLERK_PEM_PUBLIC_KEY")
+    clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
+    
+    # 1. Attempt offline JWT signature verification (if public key is provided)
+    if clerk_pub_key:
+        try:
+            decoded_token = jwt.decode(
+                req.clerk_token,
+                clerk_pub_key,
+                algorithms=["RS256"],
+                options={"verify_aud": False}
+            )
+            clerk_uid = decoded_token.get("sub")
+            email = decoded_token.get("email")  # Email is in claims if custom session template is configured
+        except Exception as e:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": "INVALID_CLERK_TOKEN", "message": f"Failed to verify Clerk token offline: {str(e)}"}
+            )
+            
+    # 2. Fetch via Clerk API (if email isn't in claims or public key isn't provided, and secret key exists)
+    if (not email or not clerk_uid) and clerk_secret_key:
+        import httpx
+        try:
+            if not clerk_uid:
+                unverified = jwt.get_unverified_claims(req.clerk_token)
+                clerk_uid = unverified.get("sub")
+                
+            if not clerk_uid:
+                raise ValueError("No user ID (sub) found in token")
+                
+            headers = {"Authorization": f"Bearer {clerk_secret_key}"}
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"https://api.clerk.com/v1/users/{clerk_uid}", headers=headers)
+                
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=401,
+                    detail={"error": "CLERK_API_ERROR", "message": f"Clerk API returned status {response.status_code}: {response.text}"}
+                )
+                
+            clerk_user = response.json()
+            email_addresses = clerk_user.get("email_addresses", [])
+            primary_email_id = clerk_user.get("primary_email_address_id")
+            for email_obj in email_addresses:
+                if email_obj.get("id") == primary_email_id:
+                    email = email_obj.get("email_address")
+                    break
+            if not email and email_addresses:
+                email = email_addresses[0].get("email_address")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(
+                status_code=401,
+                detail={"error": "INVALID_CLERK_TOKEN", "message": f"Failed to verify Clerk token via API: {str(e)}"}
+            )
+            
+    if not clerk_uid:
         raise HTTPException(
             status_code=401,
-            detail={"error": "INVALID_FIREBASE_TOKEN", "message": f"Invalid Firebase token: {str(e)}"}
+            detail={"error": "INVALID_CLERK_TOKEN", "message": "Clerk user ID could not be determined. Check CLERK_PEM_PUBLIC_KEY or CLERK_SECRET_KEY."}
         )
-    
-    email = decoded_token.get("email")
-    firebase_uid = decoded_token.get("uid")
-    
+        
     if not email:
         raise HTTPException(
             status_code=400,
-            detail={"error": "NO_EMAIL", "message": "Firebase token does not contain an email address"}
+            detail={"error": "NO_EMAIL", "message": "Clerk user account does not contain an email address"}
         )
         
     if not validate_college_email(email):
@@ -50,14 +102,13 @@ async def firebase_login(req: FirebaseLoginRequest) -> LoginResponse:
         
     parsed = parse_college_email(email)
     
-    # Check if user exists in database
-    result = supabase.table("users").select("*").eq("firebase_uid", firebase_uid).maybe_single().execute()
+    # Check if user exists in database (we map clerk_uid to the existing firebase_uid column)
+    result = supabase.table("users").select("*").eq("firebase_uid", clerk_uid).maybe_single().execute()
     user = result.data
     
     if not user:
-        # Create user if it does not exist
         new_user = {
-            "firebase_uid": firebase_uid,
+            "firebase_uid": clerk_uid,
             "email": email,
             "department": parsed.get("department"),
             "batch_year": parsed.get("batch_year"),
