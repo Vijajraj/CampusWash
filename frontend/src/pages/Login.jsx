@@ -31,7 +31,10 @@ export default function Login() {
 
 
         <div>
-          <SignInButton mode="modal">
+          <SignInButton 
+            mode="modal"
+            additionalOAuthScopes={{ google: ["hd=citchennai.net"] }}
+          >
             <button
               className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all font-medium text-gray-700 cursor-pointer duration-200"
             >
