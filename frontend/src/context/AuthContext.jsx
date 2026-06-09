@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
         } else if (err && err.message) {
           message = err.message;
         }
-        window.dispatchEvent(new CustomEvent("app-toast", { detail: { message } }));
+        localStorage.setItem("auth_error", message);
       } finally {
         setInitializing(false);
       }

@@ -1,7 +1,17 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { SignInButton } from "@clerk/clerk-react";
 
 export default function Login() {
+  const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    const error = localStorage.getItem("auth_error");
+    if (error) {
+      setErrorMsg(error);
+      localStorage.removeItem("auth_error");
+    }
+  }, []);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg font-sans px-4">
       <div className="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-8 text-center animate-fade-in">
@@ -11,6 +21,14 @@ export default function Login() {
           <h1 className="text-3xl font-bold tracking-tight text-primary mb-2">CampusWash</h1>
           <p className="text-sm text-text-muted">CIT Chennai's clothing share platform.</p>
         </div>
+
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg text-left">
+            <p className="font-semibold text-red-800">Sign in failed</p>
+            <p className="mt-1 text-red-600">{errorMsg}</p>
+          </div>
+        )}
+
 
         <div>
           <SignInButton mode="modal">
