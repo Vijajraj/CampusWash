@@ -94,12 +94,7 @@ async def clerk_login(req: ClerkLoginRequest) -> LoginResponse:
             detail={"error": "NO_EMAIL", "message": "Clerk user account does not contain an email address"}
         )
         
-    if not validate_college_email(email):
-        raise HTTPException(
-            status_code=403,
-            detail={"error": "INVALID_COLLEGE_EMAIL", "message": "Only @citchennai.net emails are allowed"}
-        )
-        
+
     parsed = parse_college_email(email)
     
     # Check if user exists in database (we map clerk_uid to the existing firebase_uid column)
