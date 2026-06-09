@@ -107,16 +107,27 @@ async def clerk_login(req: ClerkLoginRequest) -> LoginResponse:
     user = result.data
     
     if not user:
-        new_user = {
-            "firebase_uid": clerk_uid,
-            "email": email,
-            "department": parsed.get("department"),
-            "batch_year": parsed.get("batch_year"),
-            "profile_complete": False,
-            "role": "student"
-        }
-        res = supabase.table("users").insert(new_user).execute()
-        user = res.data[0]
+        # Check if the user exists by email (created during Firebase era)
+        result_by_email = supabase.table("users").select("*").eq("email", email).maybe_single().execute()
+        existing_user_by_email = result_by_email.data
+        
+        if existing_user_by_email:
+            # Update their external UID to Clerk User ID (clerk_uid)
+            res = supabase.table("users").update({"firebase_uid": clerk_uid}).eq("id", existing_user_by_email["id"]).execute()
+            user = res.data[0]
+            print(f"ℹ️ Migrated existing user {email} from Firebase UID to Clerk UID: {clerk_uid}")
+        else:
+            # Completely new user, insert a new record
+            new_user = {
+                "firebase_uid": clerk_uid,
+                "email": email,
+                "department": parsed.get("department"),
+                "batch_year": parsed.get("batch_year"),
+                "profile_complete": False,
+                "role": "student"
+            }
+            res = supabase.table("users").insert(new_user).execute()
+            user = res.data[0]
         
     access_token = create_jwt(user["id"])
     
