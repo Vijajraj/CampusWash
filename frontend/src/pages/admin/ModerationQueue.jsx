@@ -5,6 +5,7 @@ import StatusBadge from "../../components/StatusBadge";
 import { getReports, resolveReport, getUsersList, updateUserRole } from "../../api/moderation";
 import { showToast } from "../../hooks/useBorrow";
 import { ArrowLeft, Shield, AlertTriangle, Users } from "lucide-react";
+import HeaderActions from "../../components/HeaderActions";
 
 export default function ModerationQueue() {
   const { user, loading: authLoading } = useAuth();
@@ -113,7 +114,7 @@ export default function ModerationQueue() {
   return (
     <div className="min-h-screen bg-bg font-sans flex flex-col">
       {/* Top Header */}
-      <header className="bg-surface border-b border-border py-4 px-6 md:px-12 flex items-center justify-between">
+      <header className="bg-surface border-b border-border py-4 px-6 md:px-12 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
             to="/dashboard"
@@ -126,6 +127,8 @@ export default function ModerationQueue() {
             <span>Moderation Desk</span>
           </span>
         </div>
+
+        <HeaderActions />
       </header>
 
       {/* Main Area */}

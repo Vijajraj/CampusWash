@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useLostItems, useFoundItems } from "../hooks/useItems";
 import ItemCard from "../components/ItemCard";
 import { Plus, ArrowLeft, RefreshCw, SlidersHorizontal, Info } from "lucide-react";
+import HeaderActions from "../components/HeaderActions";
 
 export default function LostAndFound() {
   const [activeTab, setActiveTab] = useState("lost"); // "lost" or "found"
@@ -61,7 +62,7 @@ export default function LostAndFound() {
   return (
     <div className="min-h-screen bg-bg font-sans flex flex-col">
       {/* Top Header */}
-      <header className="bg-surface border-b border-border py-4 px-6 md:px-12 flex items-center justify-between">
+      <header className="bg-surface border-b border-border py-4 px-6 md:px-12 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
             to="/dashboard"
@@ -72,13 +73,16 @@ export default function LostAndFound() {
           <span className="text-xl font-bold text-primary">Lost & Found Board</span>
         </div>
 
-        <Link
-          to="/lost-found/post"
-          className="flex items-center gap-2 py-2 px-4 bg-primary hover:bg-primary-lt text-surface font-semibold text-sm rounded-lg shadow-sm transition-all duration-200"
-        >
-          <Plus size={16} />
-          <span>Post Lost/Found Item</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <HeaderActions />
+          <Link
+            to="/lost-found/post"
+            className="flex items-center gap-2 py-2 px-4 bg-primary hover:bg-primary-lt text-surface font-semibold text-sm rounded-lg shadow-sm transition-all duration-200"
+          >
+            <Plus size={16} />
+            <span>Post Lost/Found Item</span>
+          </Link>
+        </div>
       </header>
 
       {/* Main Content Area */}

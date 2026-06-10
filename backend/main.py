@@ -41,7 +41,7 @@ error_traceback = None
 app = FastAPI()
 
 try:
-    from app.routers import auth, borrow, requests, items, moderation
+    from app.routers import auth, borrow, requests, items, moderation, feedback
 
     app.add_middleware(
         CORSMiddleware,
@@ -57,6 +57,7 @@ try:
     app.include_router(requests.router, prefix="/api/v1/requests")
     app.include_router(items.router, prefix="/api/v1/items")
     app.include_router(moderation.router, prefix="/api/v1/admin")
+    app.include_router(feedback.router, prefix="/api/v1/feedback")
 
 except Exception as e:
     error_traceback = traceback.format_exc()
