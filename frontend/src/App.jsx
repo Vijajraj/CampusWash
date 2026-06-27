@@ -14,20 +14,28 @@ import LostAndFound from "./pages/LostAndFound";
 import PostItem from "./pages/PostItem";
 import ModerationQueue from "./pages/admin/ModerationQueue";
 
+// Branded loading screen — replaces grey skeleton boxes
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-8 font-sans gap-5">
+    <div className="flex flex-col items-center gap-3 animate-fade-in">
+      <div className="text-5xl animate-bounce" style={{ animationDuration: '1.5s' }}>👕</div>
+      <h1 className="text-xl font-bold tracking-tight text-primary">CampusWash</h1>
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+      <span className="w-2 h-2 bg-primary-lt rounded-full animate-pulse" style={{ animationDelay: '200ms' }}></span>
+      <span className="w-2 h-2 bg-accent rounded-full animate-pulse" style={{ animationDelay: '400ms' }}></span>
+    </div>
+    <p className="text-sm text-text-muted">Loading your session...</p>
+  </div>
+);
+
 // Route Guard for fully authenticated & profile-completed users
 const ProtectedRoutes = () => {
   const { isAuthenticated, profileComplete, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-8 font-sans">
-        <div className="w-full max-w-md space-y-4">
-          <div className="h-8 bg-border animate-pulse rounded w-1/3"></div>
-          <div className="h-4 bg-border animate-pulse rounded w-1/2"></div>
-          <div className="h-32 bg-border animate-pulse rounded-lg w-full"></div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
@@ -46,14 +54,7 @@ const UnverifiedRoutes = () => {
   const { isAuthenticated, profileComplete, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-8 font-sans">
-        <div className="w-full max-w-md space-y-4">
-          <div className="h-8 bg-border animate-pulse rounded w-1/3"></div>
-          <div className="h-32 bg-border animate-pulse rounded-lg w-full"></div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
@@ -72,13 +73,7 @@ const PublicOnlyRoute = () => {
   const { isAuthenticated, profileComplete, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-8 font-sans">
-        <div className="w-full max-w-md space-y-4">
-          <div className="h-32 bg-border animate-pulse rounded-lg w-full"></div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (isAuthenticated) {
