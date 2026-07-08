@@ -1,0 +1,30 @@
+name: Keep Alive — Render + Supabase
+
+on:
+  schedule:
+    # Every 14 minutes — keeps Render awake (sleeps after 15 min) and Supabase alive (pauses after 7 days)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend /health (also pings Supabase)
+        run: |
+          response=$(curl -sf --max-time 60 https://campuswash.onrender.com/health)
+          echo "Response: $response"
+          
+          # Check if both services are ok
+          if echo "$response" | grep -q '"status":"ok"'; then
+            echo "✅ Backend is alive"
+          else
+            echo "❌ Backend issue detected"
+            exit 1
+          fi
+          
+          if echo "$response" | grep -q '"supabase":"ok"'; then
+            echo "✅ Supabase is alive"
+          else
+            echo "⚠️ Supabase ping failed — check logs"
+          fi
