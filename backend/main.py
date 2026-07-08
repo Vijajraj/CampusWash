@@ -66,7 +66,16 @@ except Exception as e:
 async def health():
     if error_traceback:
         return {"status": "error", "traceback": error_traceback}
-    return {"status": "ok"}
+
+    # Ping Supabase to prevent free-tier project pausing (7 days inactivity)
+    supabase_status = "ok"
+    try:
+        from app.db import supabase
+        supabase.table("users").select("id", count="exact").limit(1).execute()
+    except Exception as e:
+        supabase_status = f"error: {str(e)}"
+
+    return {"status": "ok", "supabase": supabase_status}
 
 @app.get("/api/v1/health")
 async def api_health():
