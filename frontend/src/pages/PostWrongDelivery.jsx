@@ -148,7 +148,7 @@ export default function PostWrongDelivery() {
               <input
                 type="file"
                 ref={cameraInputRef}
-                accept="image/png, image/jpeg"
+                accept="image/*"
                 capture="environment"
                 onChange={handleImage}
                 className="hidden"

@@ -244,7 +244,7 @@ export default function PostLending() {
                   <input
                     type="file"
                     ref={cameraInputRef}
-                    accept="image/png, image/jpeg"
+                    accept="image/*"
                     capture="environment"
                     onChange={handleImageChange}
                     className="hidden"
