@@ -2,6 +2,7 @@ import { useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { postWrongDelivery } from "../api/wrongDeliveries"
 import { Camera, Upload } from "lucide-react"
+import CameraCapture from "../components/CameraCapture"
 
 const ITEM_TYPES = ["shirt","trouser","towel","bedsheet","blazer","other"]
 
@@ -14,9 +15,9 @@ export default function PostWrongDelivery() {
     title: "", description: "", item_type: "",
     color: "", any_marks: "", image: null
   })
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   const fileInputRef = useRef(null)
-  const cameraInputRef = useRef(null)
 
   const handleImage = (e) => {
     const file = e.target.files[0]
@@ -127,7 +128,7 @@ export default function PostWrongDelivery() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => cameraInputRef.current.click()}
+                onClick={() => setCameraOpen(true)}
                 className="flex flex-col items-center justify-center border border-dashed border-[var(--color-border)] rounded-lg py-5 px-3 hover:bg-[var(--color-bg)] hover:border-[var(--color-primary-lt)] transition-all duration-200 cursor-pointer"
               >
                 <Camera className="text-[var(--color-text-muted)] mb-1.5" size={20} />
@@ -144,15 +145,6 @@ export default function PostWrongDelivery() {
                 <span className="text-xs font-semibold text-[var(--color-text)]">Upload File</span>
                 <span className="text-[9px] text-[var(--color-text-muted)] mt-0.5">From Device</span>
               </button>
-
-              <input
-                type="file"
-                ref={cameraInputRef}
-                accept="image/*"
-                capture="environment"
-                onChange={handleImage}
-                className="hidden"
-              />
 
               <input
                 type="file"
@@ -181,6 +173,16 @@ export default function PostWrongDelivery() {
               </button>
             </div>
           )}
+
+          <CameraCapture
+            open={cameraOpen}
+            onClose={() => setCameraOpen(false)}
+            onCapture={(file) => {
+              setForm(f => ({ ...f, image: file }))
+              setPreview(URL.createObjectURL(file))
+              setCameraOpen(false)
+            }}
+          />
 
         {error && (
           <p className="text-sm text-[var(--color-error)]">{error}</p>

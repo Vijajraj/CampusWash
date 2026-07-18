@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { createListing } from "../api/borrow";
 import { showToast } from "../hooks/useBorrow";
 import { ArrowLeft, Upload, X, Camera } from "lucide-react";
+import CameraCapture from "../components/CameraCapture";
 
 export default function PostLending() {
   const navigate = useNavigate();
@@ -16,9 +17,9 @@ export default function PostLending() {
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const fileInputRef = React.useRef(null);
-  const cameraInputRef = React.useRef(null);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -223,7 +224,7 @@ export default function PostLending() {
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
-                    onClick={() => cameraInputRef.current.click()}
+                    onClick={() => setCameraOpen(true)}
                     className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg py-6 px-4 hover:bg-bg/50 hover:border-primary-lt transition-all duration-200 cursor-pointer"
                   >
                     <Camera className="text-text-muted mb-2" size={24} />
@@ -240,15 +241,6 @@ export default function PostLending() {
                     <span className="text-xs font-semibold text-text">Upload File</span>
                     <span className="text-[10px] text-text-muted mt-1">From Device</span>
                   </button>
-
-                  <input
-                    type="file"
-                    ref={cameraInputRef}
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
 
                   <input
                     type="file"
@@ -274,6 +266,16 @@ export default function PostLending() {
                   </button>
                 </div>
               )}
+
+              <CameraCapture
+                open={cameraOpen}
+                onClose={() => setCameraOpen(false)}
+                onCapture={(file) => {
+                  setImageFile(file);
+                  setImagePreview(URL.createObjectURL(file));
+                  setCameraOpen(false);
+                }}
+              />
             </div>
 
             {/* Action Buttons */}
