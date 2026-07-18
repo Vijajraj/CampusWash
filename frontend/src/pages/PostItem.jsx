@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { postLostItem, postFoundItem } from "../api/items";
 import { showToast } from "../hooks/useItems";
-import { ArrowLeft, Upload, X, HelpCircle } from "lucide-react";
+import { ArrowLeft, Upload, X, HelpCircle, Camera } from "lucide-react";
 
 export default function PostItem() {
   const navigate = useNavigate();
@@ -14,10 +14,12 @@ export default function PostItem() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
-
+  const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
+
+  const fileInputRef = React.useRef(null);
+  const cameraInputRef = React.useRef(null);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -265,17 +267,44 @@ export default function PostItem() {
               </label>
               
               {!imagePreview ? (
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg py-6 px-4 cursor-pointer hover:bg-bg/50 transition-all duration-200">
-                  <Upload className="text-text-muted mb-2" size={24} />
-                  <span className="text-xs font-semibold text-text font-sans">Choose PNG or JPEG</span>
-                  <span className="text-[10px] text-text-muted mt-1 font-sans">Max 5MB</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current.click()}
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg py-6 px-4 hover:bg-bg/50 hover:border-primary-lt transition-all duration-200 cursor-pointer"
+                  >
+                    <Camera className="text-text-muted mb-2" size={24} />
+                    <span className="text-xs font-semibold text-text font-sans">Take Photo</span>
+                    <span className="text-[10px] text-text-muted mt-1 font-sans">Using Camera</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current.click()}
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg py-6 px-4 hover:bg-bg/50 hover:border-primary-lt transition-all duration-200 cursor-pointer"
+                  >
+                    <Upload className="text-text-muted mb-2" size={24} />
+                    <span className="text-xs font-semibold text-text font-sans">Upload File</span>
+                    <span className="text-[10px] text-text-muted mt-1 font-sans">From Device</span>
+                  </button>
+
                   <input
                     type="file"
+                    ref={cameraInputRef}
+                    accept="image/png, image/jpeg"
+                    capture="environment"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
                     accept="image/png, image/jpeg"
                     onChange={handleImageChange}
                     className="hidden"
                   />
-                </label>
+                </div>
               ) : (
                 <div className="relative border border-border rounded-lg overflow-hidden bg-bg">
                   <img

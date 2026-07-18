@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { postWrongDelivery } from "../api/wrongDeliveries"
+import { Camera, Upload } from "lucide-react"
 
 const ITEM_TYPES = ["shirt","trouser","towel","bedsheet","blazer","other"]
 
@@ -13,6 +14,9 @@ export default function PostWrongDelivery() {
     title: "", description: "", item_type: "",
     color: "", any_marks: "", image: null
   })
+
+  const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
 
   const handleImage = (e) => {
     const file = e.target.files[0]
@@ -119,25 +123,64 @@ export default function PostWrongDelivery() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Photo (required)
-          </label>
-          <input
-            type="file"
-            accept="image/jpeg,image/png"
-            onChange={handleImage}
-            className="text-sm"
-          />
-          {preview && (
-            <img
-              src={preview}
-              alt="preview"
-              className="mt-2 h-40 object-cover rounded-lg
-                         border border-[var(--color-border)]"
-            />
+          {!preview ? (
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current.click()}
+                className="flex flex-col items-center justify-center border border-dashed border-[var(--color-border)] rounded-lg py-5 px-3 hover:bg-[var(--color-bg)] hover:border-[var(--color-primary-lt)] transition-all duration-200 cursor-pointer"
+              >
+                <Camera className="text-[var(--color-text-muted)] mb-1.5" size={20} />
+                <span className="text-xs font-semibold text-[var(--color-text)]">Take Photo</span>
+                <span className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Using Camera</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current.click()}
+                className="flex flex-col items-center justify-center border border-dashed border-[var(--color-border)] rounded-lg py-5 px-3 hover:bg-[var(--color-bg)] hover:border-[var(--color-primary-lt)] transition-all duration-200 cursor-pointer"
+              >
+                <Upload className="text-[var(--color-text-muted)] mb-1.5" size={20} />
+                <span className="text-xs font-semibold text-[var(--color-text)]">Upload File</span>
+                <span className="text-[9px] text-[var(--color-text-muted)] mt-0.5">From Device</span>
+              </button>
+
+              <input
+                type="file"
+                ref={cameraInputRef}
+                accept="image/png, image/jpeg"
+                capture="environment"
+                onChange={handleImage}
+                className="hidden"
+              />
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/png, image/jpeg"
+                onChange={handleImage}
+                className="hidden"
+              />
+            </div>
+          ) : (
+            <div className="relative border border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-bg)]">
+              <img
+                src={preview}
+                alt="Preview"
+                className="w-full h-40 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setForm(f => ({ ...f, image: null }))
+                  setPreview(null)
+                }}
+                className="absolute top-2 right-2 p-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full hover:bg-red-50 text-[var(--color-error)] active:scale-90 transition-all cursor-pointer"
+              >
+                Clear Photo
+              </button>
+            </div>
           )}
-        </div>
 
         {error && (
           <p className="text-sm text-[var(--color-error)]">{error}</p>
