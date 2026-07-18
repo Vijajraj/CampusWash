@@ -13,8 +13,8 @@ export const useWrongDeliveries = (filters = {}, page = 1) => {
       try {
         setLoading(true)
         const data = await getWrongDeliveries(filters, page)
-        setItems(data.items)
-        setTotal(data.total)
+        setItems(data.items || [])
+        setTotal(data.total || 0)
       } catch (err) {
         setError(err.message)
       } finally {

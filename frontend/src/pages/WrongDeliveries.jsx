@@ -42,7 +42,7 @@ export default function WrongDeliveries() {
         Received clothes that are not yours? Post here so the owner can find them.
       </p>
 
-      {items.length === 0 ? (
+      {(items || []).length === 0 ? (
         <p className="text-center text-[var(--color-text-muted)] py-12">
           No wrong deliveries posted yet.
         </p>

@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE_URL
+import { BASE_URL } from "./config"
 
 const headers = () => ({
   Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -6,14 +6,14 @@ const headers = () => ({
 
 export const getWrongDeliveries = async (filters = {}, page = 1) => {
   const params = new URLSearchParams({ page, ...filters })
-  const res = await fetch(`${BASE}/wrong-deliveries?${params}`)
+  const res = await fetch(`${BASE_URL}/wrong-deliveries?${params}`)
   const data = await res.json()
   if (!res.ok) throw data
   return data
 }
 
 export const postWrongDelivery = async (formData) => {
-  const res = await fetch(`${BASE}/wrong-deliveries`, {
+  const res = await fetch(`${BASE_URL}/wrong-deliveries`, {
     method: "POST",
     headers: headers(),
     body: formData
@@ -24,7 +24,7 @@ export const postWrongDelivery = async (formData) => {
 }
 
 export const claimWrongDelivery = async (id) => {
-  const res = await fetch(`${BASE}/wrong-deliveries/${id}/claim`, {
+  const res = await fetch(`${BASE_URL}/wrong-deliveries/${id}/claim`, {
     method: "PATCH",
     headers: headers()
   })
@@ -34,7 +34,7 @@ export const claimWrongDelivery = async (id) => {
 }
 
 export const deleteWrongDelivery = async (id) => {
-  const res = await fetch(`${BASE}/wrong-deliveries/${id}`, {
+  const res = await fetch(`${BASE_URL}/wrong-deliveries/${id}`, {
     method: "DELETE",
     headers: headers()
   })
@@ -46,7 +46,7 @@ export const deleteWrongDelivery = async (id) => {
 export const reportWrongDelivery = async (id, reason) => {
   const form = new FormData()
   form.append("reason", reason)
-  const res = await fetch(`${BASE}/wrong-deliveries/${id}/report`, {
+  const res = await fetch(`${BASE_URL}/wrong-deliveries/${id}/report`, {
     method: "POST",
     headers: headers(),
     body: form
