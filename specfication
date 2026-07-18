@@ -156,40 +156,26 @@ create index idx_borrow_listing  on borrow_requests(listing_id);
 create index idx_borrow_borrower on borrow_requests(borrower_id);
 create index idx_borrow_status   on borrow_requests(status);
 
--- ITEM REQUESTS
-create table item_requests (
-  id           uuid primary key default uuid_generate_v4(),
-  requester_id uuid not null references users(id) on delete cascade,
-  title        text not null,
-  description  text,
-  item_type    text not null
-               check (item_type in ('shirt','trouser','blazer','saree',
-                                    'kurta','towel','shoes','other')),
-  size         text,
-  color        text,
-  needed_by    date,
-  status       text not null default 'open'
-               check (status in ('open','fulfilled','expired')),
-  expires_at   timestamptz not null
-               default (now() + interval '7 days'),
-  created_at   timestamptz not null default now()
+-- WRONG DELIVERIES
+create table wrong_deliveries (
+  id          uuid primary key default uuid_generate_v4(),
+  poster_id   uuid not null references users(id) on delete cascade,
+  title       text not null,
+  description text not null,
+  item_type   text not null
+              check (item_type in ('shirt','trouser','towel',
+                                   'bedsheet','blazer','other')),
+  color       text,
+  any_marks   text,
+  image_url   text,
+  status      text not null default 'unclaimed'
+              check (status in ('unclaimed','claimed')),
+  claimed_by  uuid references users(id),
+  created_at  timestamptz not null default now()
 );
 
-create index idx_requests_requester on item_requests(requester_id);
-create index idx_requests_status    on item_requests(status);
-create index idx_requests_expires   on item_requests(expires_at);
-
--- REQUEST RESPONSES
-create table request_responses (
-  id           uuid primary key default uuid_generate_v4(),
-  request_id   uuid not null references item_requests(id) on delete cascade,
-  responder_id uuid not null references users(id) on delete cascade,
-  message      text not null,
-  created_at   timestamptz not null default now(),
-  unique (request_id, responder_id)
-);
-
-create index idx_responses_request on request_responses(request_id);
+create index idx_wd_poster on wrong_deliveries(poster_id);
+create index idx_wd_status on wrong_deliveries(status);
 
 -- LOST ITEMS
 create table lost_items (
@@ -239,7 +225,7 @@ create table reports (
   reporter_id uuid not null references users(id) on delete cascade,
   target_type text not null
               check (target_type in ('lost_item','found_item',
-                                     'lend_listing','item_request','user')),
+                                     'lend_listing','wrong_delivery','user')),
   target_id   uuid not null,
   reason      text not null,
   status      text not null default 'pending'
@@ -254,8 +240,7 @@ create index idx_reports_status on reports(status);
 alter table users             enable row level security;
 alter table lend_listings     enable row level security;
 alter table borrow_requests   enable row level security;
-alter table item_requests     enable row level security;
-alter table request_responses enable row level security;
+alter table wrong_deliveries  enable row level security;
 alter table lost_items        enable row level security;
 alter table found_items       enable row level security;
 alter table reports           enable row level security;
@@ -264,8 +249,8 @@ alter table reports           enable row level security;
 create policy "public read lend listings"
   on lend_listings for select using (true);
 
-create policy "public read item requests"
-  on item_requests for select using (true);
+create policy "public read wrong deliveries"
+  on wrong_deliveries for select using (true);
 
 create policy "public read lost items"
   on lost_items for select using (true);
@@ -297,12 +282,12 @@ campuswash/
 │       ├── models/
 │       │   ├── auth.py
 │       │   ├── borrow.py
-│       │   ├── requests.py
+│       │   ├── wrong_deliveries.py
 │       │   └── items.py
 │       └── routers/
 │           ├── auth.py
 │           ├── borrow.py
-│           ├── requests.py
+│           ├── wrong_deliveries.py
 │           ├── items.py
 │           └── moderation.py
 └── frontend/
@@ -322,12 +307,12 @@ campuswash/
         ├── api/
         │   ├── auth.js
         │   ├── borrow.js
-        │   ├── requests.js
+        │   ├── wrongDeliveries.js
         │   └── items.js
         ├── hooks/
         │   ├── useAuth.js
         │   ├── useBorrow.js
-        │   ├── useRequests.js
+        │   ├── useWrongDeliveries.js
         │   └── useItems.js
         ├── pages/
         │   ├── Login.jsx
@@ -335,8 +320,8 @@ campuswash/
         │   ├── Dashboard.jsx
         │   ├── BorrowLend.jsx
         │   ├── PostLending.jsx
-        │   ├── ItemRequests.jsx
-        │   ├── PostRequest.jsx
+        │   ├── WrongDeliveries.jsx
+        │   ├── PostWrongDelivery.jsx
         │   ├── LostAndFound.jsx
         │   ├── PostItem.jsx
         │   └── admin/
@@ -563,16 +548,51 @@ PATCH  /borrow/requests/{id}/return  — JWT, listing owner only
 
 ---
 
-### Item Requests
+### Wrong Deliveries
 
 ```
-GET    /requests                — no auth, paginated, excludes expired
-                                  ?type=&size=&page=
-POST   /requests                — JWT, expires_at = now() + 7 days
-DELETE /requests/{id}           — JWT, requester only
-POST   /requests/{id}/respond   — JWT, not requester → ALREADY_RESPONDED if sent before
-GET    /requests/{id}/responses — JWT, requester only
-PATCH  /requests/{id}/fulfill   — JWT, requester only → status = fulfilled
+GET  /wrong-deliveries
+  No auth. Paginated. ?type=&color=&page=
+  Returns unclaimed items only by default
+  Response: standard pagination shape with WrongDelivery objects
+
+POST /wrong-deliveries
+  JWT required. Multipart form.
+  Fields:
+    title       → mandatory
+    description → mandatory, what the item looks like, where found
+    item_type   → mandatory, one of the check values
+    color       → optional
+    any_marks   → optional, name tags, tears, patterns, anything identifying
+    image       → mandatory, jpeg or png, max 5MB
+  Side effects:
+    compress image → upload to item-images bucket
+  Response: { "id": "uuid" }
+
+GET /wrong-deliveries/{id}
+  No auth.
+  Response: full WrongDelivery object with poster display name
+
+PATCH /wrong-deliveries/{id}/claim
+  JWT required. Cannot be the poster.
+  Side effects:
+    status = claimed
+    claimed_by = current user id
+  Response: { "message": "Claimed successfully" }
+  Errors: FORBIDDEN if poster tries to claim own post
+          409 if already claimed
+
+DELETE /wrong-deliveries/{id}
+  JWT required. Poster only. Only if status = unclaimed.
+  Response: { "message": "Post removed" }
+  Errors: FORBIDDEN if not poster
+          409 if already claimed — cannot delete
+
+POST /wrong-deliveries/{id}/report
+  JWT required.
+  Body: { "reason": "string" }
+  Uses existing reports table with target_type = "wrong_delivery"
+  Response: { "message": "Report submitted" }
 ```
 
 ---
@@ -625,14 +645,13 @@ rejectRequest(id)
 confirmReturn(id)
 ```
 
-### src/api/requests.js
+### src/api/wrongDeliveries.js
 ```
-getRequests(filters, page)
-createRequest(data)
-deleteRequest(id)
-respondToRequest(requestId, message)
-getResponses(requestId)
-fulfillRequest(requestId)
+getWrongDeliveries(filters, page)
+postWrongDelivery(formData)
+claimWrongDelivery(id)
+deleteWrongDelivery(id)
+reportWrongDelivery(id, reason)
 ```
 
 ### src/api/items.js
@@ -657,6 +676,7 @@ Used in frontend only. No backend changes needed.
 | borrow_requests | UPDATE | useBorrow.js |
 | lost_items | UPDATE | useItems.js |
 | found_items | UPDATE | useItems.js |
+| wrong_deliveries | UPDATE | useWrongDeliveries.js |
 
 Pattern — always clean up:
 ```javascript
@@ -742,7 +762,7 @@ Phase 1 — Backend (3–4 sessions)
   4. app/dependencies.py — Firebase token verify + get_current_user + require_moderator
   5. app/models/auth.py + app/routers/auth.py — 3 endpoints
   6. app/models/borrow.py + app/routers/borrow.py — 10 endpoints
-  7. app/models/requests.py + app/routers/requests.py — 6 endpoints
+  7. app/models/wrong_deliveries.py + app/routers/wrong_deliveries.py — 6 endpoints
   8. app/models/items.py + app/routers/items.py — 7 endpoints
   9. app/routers/moderation.py — 4 endpoints
   10. Test every endpoint via /docs
@@ -754,7 +774,7 @@ Phase 2 — Frontend (4–5 sessions)
   14. Login page + CompleteProfile page
   15. Dashboard page
   16. BorrowLend + PostLending pages + Realtime in useBorrow
-  17. ItemRequests + PostRequest pages
+  17. WrongDeliveries + PostWrongDelivery pages + Realtime in useWrongDeliveries
   18. LostAndFound + PostItem pages + Realtime in useItems
   19. Admin ModerationQueue page
   20. Set up GitHub Actions deploy hooks

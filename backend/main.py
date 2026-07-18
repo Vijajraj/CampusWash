@@ -41,7 +41,7 @@ error_traceback = None
 app = FastAPI()
 
 try:
-    from app.routers import auth, borrow, requests, items, moderation, feedback
+    from app.routers import auth, borrow, wrong_deliveries, items, moderation, feedback
 
     app.add_middleware(
         CORSMiddleware,
@@ -54,7 +54,7 @@ try:
 
     app.include_router(auth.router, prefix="/api/v1/auth")
     app.include_router(borrow.router, prefix="/api/v1/borrow")
-    app.include_router(requests.router, prefix="/api/v1/requests")
+    app.include_router(wrong_deliveries.router, prefix="/api/v1")
     app.include_router(items.router, prefix="/api/v1/items")
     app.include_router(moderation.router, prefix="/api/v1/admin")
     app.include_router(feedback.router, prefix="/api/v1/feedback")

@@ -44,7 +44,7 @@ export default function Dashboard() {
             Welcome back, {user?.name || "Student"}
           </h1>
           <p className="text-sm text-text-muted mt-2">
-            Select a module to share clothes, respond to requests, or find items inside the CIT Chennai campus.
+            Select a module to share clothes, manage wrong deliveries, or find items inside the CIT Chennai campus.
           </p>
         </div>
 
@@ -69,19 +69,19 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          {/* Card 2: Item Requests */}
+          {/* Card 2: Wrong Deliveries */}
           <div className="bg-surface border border-border rounded-xl shadow-sm p-6 flex flex-col justify-between hover:shadow-md transition-all duration-300">
             <div>
               <div className="w-12 h-12 bg-bg text-primary flex items-center justify-center rounded-lg mb-4">
                 <MessageSquare size={24} />
               </div>
-              <h2 className="text-lg font-bold text-text mb-2">Item Request Board</h2>
+              <h2 className="text-lg font-bold text-text mb-2">Wrong Deliveries</h2>
               <p className="text-sm text-text-muted mb-6 leading-relaxed">
-                Looking for a specific cloth? Post a request or help other students fulfill theirs.
+                Received clothes that are not yours? Post here so the owner can find them.
               </p>
             </div>
             <Link
-              to="/requests"
+              to="/wrong-deliveries"
               className="w-full inline-block text-center py-2.5 px-4 bg-primary hover:bg-primary-lt text-surface font-semibold text-sm rounded-lg transition-all duration-200"
             >
               Enter Module

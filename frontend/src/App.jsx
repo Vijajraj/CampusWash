@@ -8,8 +8,8 @@ import CompleteProfile from "./pages/CompleteProfile";
 import Dashboard from "./pages/Dashboard";
 import BorrowLend from "./pages/BorrowLend";
 import PostLending from "./pages/PostLending";
-import ItemRequests from "./pages/ItemRequests";
-import PostRequest from "./pages/PostRequest";
+import WrongDeliveries from "./pages/WrongDeliveries";
+import PostWrongDelivery from "./pages/PostWrongDelivery";
 import LostAndFound from "./pages/LostAndFound";
 import PostItem from "./pages/PostItem";
 import ModerationQueue from "./pages/admin/ModerationQueue";
@@ -135,8 +135,8 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/borrow" element={<BorrowLend />} />
             <Route path="/borrow/post" element={<PostLending />} />
-            <Route path="/requests" element={<ItemRequests />} />
-            <Route path="/requests/post" element={<PostRequest />} />
+            <Route path="/wrong-deliveries" element={<WrongDeliveries />} />
+            <Route path="/wrong-deliveries/post" element={<PostWrongDelivery />} />
             <Route path="/lost-found" element={<LostAndFound />} />
             <Route path="/lost-found/post" element={<PostItem />} />
             <Route path="/admin" element={<ModerationQueue />} />

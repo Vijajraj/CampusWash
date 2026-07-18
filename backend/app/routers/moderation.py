@@ -56,7 +56,7 @@ async def get_reports(
             "lost_item": "lost_items",
             "found_item": "found_items",
             "lend_listing": "lend_listings",
-            "item_request": "item_requests",
+            "wrong_delivery": "wrong_deliveries",
             "user": "users"
         }
         

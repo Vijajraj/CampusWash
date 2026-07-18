@@ -1,6 +1,6 @@
 # CampusWash 👕
 
-CampusWash is a college-only clothes sharing, request, and lost-and-found platform built specifically for **Chennai Institute of Technology (CIT Chennai)** students. It enables a circular, collaborative ecosystem inside the campus for lending clothes, posting requests, tracking lost/found items, and managing moderation.
+CampusWash is a college-only clothes sharing, wrong-delivery exchange, and lost-and-found platform built specifically for **Chennai Institute of Technology (CIT Chennai)** students. It enables a circular, collaborative ecosystem inside the campus for lending clothes, managing wrong laundry deliveries, tracking lost/found items, and managing moderation.
 
 ---
 
@@ -11,10 +11,10 @@ CampusWash is a college-only clothes sharing, request, and lost-and-found platfo
    - Request to borrow clothes for a specific timeframe (within owner's limit).
    - Track overlapping requests and approve/reject/return items seamlessly.
    
-2. **Item Request Board**
-   - Post "I need X clothing item" requests.
-   - Others can respond if they have the item and want to help out.
-   - Mark requests as fulfilled once resolved.
+2. **Wrong Deliveries**
+   - Received clothes that are not yours in your laundry bag? Post them here.
+   - The rightful owner can browse unclaimed items and claim them ("This is mine").
+   - Coordinate exchanges directly on the platform.
 
 3. **Lost & Found**
    - Report lost clothes or found items with location details, date, and image upload.
@@ -24,7 +24,7 @@ CampusWash is a college-only clothes sharing, request, and lost-and-found platfo
    - Submit interactive 1-5 star ratings and suggestions directly from any page header.
 
 5. **Moderation Desk**
-   - Review reported items, listings, and requests.
+   - Review reported items, listings, and wrong delivery posts.
    - Manage user roles (Student, Moderator, Admin).
 
 ---
@@ -118,34 +118,22 @@ create table borrow_requests (
 create index idx_borrow_listing on borrow_requests(listing_id);
 create index idx_borrow_borrower on borrow_requests(borrower_id);
 create index idx_borrow_status on borrow_requests(status);
-
--- ITEM REQUESTS Table
-create table item_requests (
-  id           uuid primary key default uuid_generate_v4(),
-  requester_id uuid not null references users(id) on delete cascade,
-  title        text not null,
-  description  text,
-  item_type    text not null check (item_type in ('shirt','trouser','blazer','saree','kurta','towel','shoes','other')),
-  size         text,
-  color        text,
-  needed_by    date,
-  status       text not null default 'open' check (status in ('open','fulfilled','expired')),
-  expires_at   timestamptz not null default (now() + interval '7 days'),
-  created_at   timestamptz not null default now()
+-- WRONG DELIVERIES Table
+create table wrong_deliveries (
+  id          uuid primary key default uuid_generate_v4(),
+  poster_id   uuid not null references users(id) on delete cascade,
+  title       text not null,
+  description text not null,
+  item_type   text not null check (item_type in ('shirt','trouser','towel','bedsheet','blazer','other')),
+  color       text,
+  any_marks   text,
+  image_url   text,
+  status      text not null default 'unclaimed' check (status in ('unclaimed','claimed')),
+  claimed_by  uuid references users(id),
+  created_at  timestamptz not null default now()
 );
-create index idx_requests_requester on item_requests(requester_id);
-create index idx_requests_status on item_requests(status);
-
--- REQUEST RESPONSES Table
-create table request_responses (
-  id           uuid primary key default uuid_generate_v4(),
-  request_id   uuid not null references item_requests(id) on delete cascade,
-  responder_id uuid not null references users(id) on delete cascade,
-  message      text not null,
-  created_at   timestamptz not null default now(),
-  unique (request_id, responder_id)
-);
-create index idx_responses_request on request_responses(request_id);
+create index idx_wd_poster on wrong_deliveries(poster_id);
+create index idx_wd_status on wrong_deliveries(status);
 
 -- LOST ITEMS Table
 create table lost_items (
@@ -185,7 +173,7 @@ create index idx_found_status on found_items(status);
 create table reports (
   id          uuid primary key default uuid_generate_v4(),
   reporter_id uuid not null references users(id) on delete cascade,
-  target_type text not null check (target_type in ('lost_item','found_item','lend_listing','item_request','user')),
+  target_type text not null check (target_type in ('lost_item','found_item','lend_listing','wrong_delivery','user')),
   target_id   uuid not null,
   reason      text not null,
   status      text not null default 'pending' check (status in ('pending','resolved','dismissed')),
@@ -208,8 +196,7 @@ create index idx_feedbacks_user on feedbacks(user_id);
 alter table users             enable row level security;
 alter table lend_listings     enable row level security;
 alter table borrow_requests   enable row level security;
-alter table item_requests     enable row level security;
-alter table request_responses enable row level security;
+alter table wrong_deliveries  enable row level security;
 alter table lost_items        enable row level security;
 alter table found_items       enable row level security;
 alter table reports           enable row level security;
@@ -217,7 +204,7 @@ alter table feedbacks         enable row level security;
 
 -- PUBLIC READ POLICIES
 create policy "public read lend listings" on lend_listings for select using (true);
-create policy "public read item requests" on item_requests for select using (true);
+create policy "public read wrong deliveries" on wrong_deliveries for select using (true);
 create policy "public read lost items" on lost_items for select using (true);
 create policy "public read found items" on found_items for select using (true);
 create policy "Users can insert feedback" on feedbacks for insert with check (true);

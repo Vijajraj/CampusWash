@@ -43,7 +43,7 @@ class PaginatedFoundItems(BaseModel):
     total_pages: int
 
 class ReportCreate(BaseModel):
-    target_type: str = Field(..., pattern="^(lost_item|found_item|lend_listing|item_request|user)$")
+    target_type: str = Field(..., pattern="^(lost_item|found_item|lend_listing|wrong_delivery|user)$")
     target_id: str
     reason: str
 
