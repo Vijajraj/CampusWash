@@ -1,49 +1,89 @@
 # CampusWash 👕
 
+<p align="center">
+  <img src="https://img.shields.io/badge/CIT_Chennai-Chennai_Institute_of_Technology-green?style=for-the-badge&logo=education&logoColor=white" alt="CIT Chennai Badge" />
+  <img src="https://img.shields.io/badge/Frontend-React_&_Vite-blue?style=for-the-badge&logo=react&logoColor=white" alt="React Badge" />
+  <img src="https://img.shields.io/badge/Backend-FastAPI-emerald?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI Badge" />
+  <img src="https://img.shields.io/badge/Database-Supabase-purple?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase Badge" />
+  <img src="https://img.shields.io/badge/Auth-Clerk-black?style=for-the-badge&logo=clerk&logoColor=white" alt="Clerk Badge" />
+</p>
+
 CampusWash is a college-only clothes sharing, wrong-delivery exchange, and lost-and-found platform built specifically for **Chennai Institute of Technology (CIT Chennai)** students. It enables a circular, collaborative ecosystem inside the campus for lending clothes, managing wrong laundry deliveries, tracking lost/found items, and managing moderation.
+
+---
+
+## 🎨 System Architecture
+
+The following diagram illustrates the application components, hosting layers, and runtime interactions:
+
+```mermaid
+graph TD
+    classDef client fill:#eef,stroke:#33f,stroke-width:2px;
+    classDef auth fill:#ffe,stroke:#eed,stroke-width:2px;
+    classDef backend fill:#efe,stroke:#3a3,stroke-width:2px;
+    classDef db fill:#fdf,stroke:#a3a,stroke-width:2px;
+
+    Client["React Client (Vite)<br/>• Custom CSS Theme System<br/>• MediaDevices Camera API<br/>• Clerk Auth Provider"]:::client
+    Clerk["Clerk Authentication<br/>• Google Login IDP<br/>• Session Token JWT Verification"]:::auth
+    API["FastAPI Backend (Render)<br/>• Python 3.11 / Pydantic v2<br/>• JWT Validation Middleware<br/>• Image Compression Helper"]:::backend
+    SupaDB["Supabase Database<br/>• PostgreSQL Relational Tables<br/>• Row-Level Security (RLS) Rules<br/>• Realtime WebSocket Channels"]:::db
+    SupaStorage["Supabase Bucket Storage<br/>• Compressed Clothing Images<br/>• Public Storage CDN Links"]:::db
+
+    Client -->|1. Authenticate Request| Clerk
+    Client -->|2. HTTP Request + Bearer JWT Token| API
+    Client -->|3. Realtime Socket Stream| SupaDB
+    API -->|4. Verify JWT Signatures| Clerk
+    API -->|5. SQL Query / RLS Context| SupaDB
+    API -->|6. Upload compressed files| SupaStorage
+```
 
 ---
 
 ## 🚀 Core Modules
 
-1. **Borrow & Lend Board**
-   - Post clothes you want to lend (shirts, trousers, blazers, sarees, kurtas, etc.).
-   - Request to borrow clothes for a specific timeframe (within owner's limit).
-   - Track overlapping requests and approve/reject/return items seamlessly.
-   
-2. **Wrong Deliveries**
-   - Received clothes that are not yours in your laundry bag? Post them here.
-   - The rightful owner can browse unclaimed items and claim them ("This is mine").
-   - Coordinate exchanges directly on the platform.
-
-3. **Lost & Found**
-   - Report lost clothes or found items with location details, date, and image upload.
-   - Browse listings and claim items.
-
-4. **Feedback System**
-   - Submit interactive 1-5 star ratings and suggestions directly from any page header.
-
-5. **Moderation Desk**
-   - Review reported items, listings, and wrong delivery posts.
-   - Manage user roles (Student, Moderator, Admin).
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology | Hosting |
+| Module | Purpose | Features |
 |---|---|---|
-| **Frontend** | React (Vite) + Tailwind CSS + Lucide Icons | Vercel |
-| **Backend** | FastAPI (Python 3.11) + Pydantic v2 | Render |
-| **Auth** | Clerk Authentication (Google Sign-In) | Clerk |
-| **Database** | Supabase (PostgreSQL) + PostgREST | Supabase |
-| **File Storage** | Supabase Storage Buckets | Supabase |
+| 👔 **Borrow & Lend Board** | circular clothing sharing | List items for loan, specify max rental days, manage incoming borrower requests, track returns. |
+| 📦 **Wrong Deliveries** | laundry mixup coordination | Post unrecognized laundry items directly, claim owned wrong deliveries, coordinate exchange handovers. |
+| 🔍 **Lost & Found** | campus items recovery | Flag lost or found items with location tagging, date timestamps, and camera image attachments. |
+| 💬 **Feedback Desk** | platform improvements | Submit interactive 1-5 star ratings and suggestions directly from any page header. |
+| 🛡️ **Moderation Center** | content governance | Report flagged posts, manage student vs. admin roles, auto-escalate reported listings. |
 
 ---
 
-## ⚙️ Environment Variables
+## 📸 Media & Hardware Integrations
 
-### Backend (`backend/.env`)
+> [!IMPORTANT]
+> **Native Camera Capture API**
+> CampusWash does not rely on simple HTML5 upload hints. It integrates a dedicated **CameraCapture** element powered by the **MediaDevices API (`navigator.mediaDevices.getUserMedia`)**.
+> - **Mobile devices:** Direct native camera activation (bypassing library dialogs) with rear-facing camera optimization.
+> - **Desktop/Laptop:** Native webcam interface fallback with front/rear camera toggle.
+> - **Fallbacks:** Independent "Upload File" control for selecting files from system folders.
+
+---
+
+## 🗄️ Database Entity Relationships
+
+The schema is built on Supabase (PostgreSQL) with integrated Row-Level Security (RLS) ensuring strict tenant isolation:
+
+```mermaid
+erDiagram
+    users ||--o{ lend_listings : "owns"
+    users ||--o{ borrow_requests : "requests"
+    users ||--o{ wrong_deliveries : "posts/claims"
+    users ||--o{ lost_items : "reports lost"
+    users ||--o{ found_items : "reports found"
+    users ||--o{ reports : "submits"
+    users ||--o{ feedbacks : "submits"
+
+    lend_listings ||--o{ borrow_requests : "receives"
+```
+
+---
+
+## ⚙️ Environment Configuration
+
+### Backend Setup (`backend/.env`)
 ```ini
 SUPABASE_URL=your-supabase-project-url
 SUPABASE_SERVICE_KEY=your-supabase-service-role-key
@@ -53,7 +93,7 @@ CLERK_PEM_PUBLIC_KEY=your-clerk-pem-public-key
 FRONTEND_URL=http://localhost:5173
 ```
 
-### Frontend (`frontend/.env`)
+### Frontend Setup (`frontend/.env`)
 ```ini
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 VITE_SUPABASE_URL=your-supabase-project-url
@@ -63,9 +103,7 @@ VITE_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 
 ---
 
-## 🗄️ Database Setup (Supabase SQL)
-
-Run the following SQL in your Supabase SQL Editor to initialize the database tables, indices, and RLS policies:
+## 🗄️ SQL Schema Initialization
 
 ```sql
 create extension if not exists "uuid-ossp";
@@ -118,6 +156,7 @@ create table borrow_requests (
 create index idx_borrow_listing on borrow_requests(listing_id);
 create index idx_borrow_borrower on borrow_requests(borrower_id);
 create index idx_borrow_status on borrow_requests(status);
+
 -- WRONG DELIVERIES Table
 create table wrong_deliveries (
   id          uuid primary key default uuid_generate_v4(),
@@ -245,15 +284,15 @@ npm run dev
 
 ---
 
-## 📦 Deployment Instructions
+## 📦 Deployment
 
-### 1. Render (Backend Deployment)
+### 1. Render (Backend)
 - Create a **Web Service** pointing to the repository.
 - Build command: `pip install -r requirements.txt`
 - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - Configure Environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `JWT_SECRET`, `CLERK_SECRET_KEY` or `CLERK_PEM_PUBLIC_KEY`).
 
-### 2. Vercel (Frontend Deployment)
+### 2. Vercel (Frontend)
 - Connect repository to Vercel.
 - Configure production environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`).
 - Auto-deploys on push to `main` branch.
