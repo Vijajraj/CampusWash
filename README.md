@@ -1,4 +1,4 @@
-# CampusWash 👕
+# CampusWash
 
 <p align="center">
   <img src="https://img.shields.io/badge/CIT_Chennai-Chennai_Institute_of_Technology-green?style=for-the-badge&logo=education&logoColor=white" alt="CIT Chennai Badge" />
@@ -8,11 +8,11 @@
   <img src="https://img.shields.io/badge/Auth-Clerk-black?style=for-the-badge&logo=clerk&logoColor=white" alt="Clerk Badge" />
 </p>
 
-CampusWash is a college-only clothes sharing, wrong-delivery exchange, and lost-and-found platform built specifically for **Chennai Institute of Technology (CIT Chennai)** students. It enables a circular, collaborative ecosystem inside the campus for lending clothes, managing wrong laundry deliveries, tracking lost/found items, and managing moderation.
+CampusWash is a secure, college-only clothes sharing, wrong-delivery coordination, and lost-and-found exchange platform built specifically for Chennai Institute of Technology (CIT Chennai) students. The platform facilitates a circular collaborative ecosystem inside the campus for lending clothes, resolving wrong laundry bag deliveries, tracking lost items, and moderating community posts.
 
 ---
 
-## 🎨 System Architecture
+## System Architecture
 
 The following diagram illustrates the application components, hosting layers, and runtime interactions:
 
@@ -39,30 +39,30 @@ graph TD
 
 ---
 
-## 🚀 Core Modules
+## Core Modules
 
-| Module | Purpose | Features |
+| Module | Purpose | Key Functionality |
 |---|---|---|
-| 👔 **Borrow & Lend Board** | circular clothing sharing | List items for loan, specify max rental days, manage incoming borrower requests, track returns. |
-| 📦 **Wrong Deliveries** | laundry mixup coordination | Post unrecognized laundry items directly, claim owned wrong deliveries, coordinate exchange handovers. |
-| 🔍 **Lost & Found** | campus items recovery | Flag lost or found items with location tagging, date timestamps, and camera image attachments. |
-| 💬 **Feedback Desk** | platform improvements | Submit interactive 1-5 star ratings and suggestions directly from any page header. |
-| 🛡️ **Moderation Center** | content governance | Report flagged posts, manage student vs. admin roles, auto-escalate reported listings. |
+| **Borrow & Lend Board** | circular clothing sharing | List items for loan, specify max rental days, manage incoming borrow requests, track returns. |
+| **Wrong Deliveries** | laundry mixup coordination | Post unrecognized laundry items directly, claim owned wrong deliveries, coordinate exchange handovers. |
+| **Lost & Found** | campus items recovery | Flag lost or found items with location tagging, date timestamps, and camera image attachments. |
+| **Feedback Desk** | platform improvements | Submit interactive 1-5 star ratings and suggestions directly from any page header. |
+| **Moderation Center** | content governance | Report flagged posts, manage student vs. admin roles, auto-escalate reported listings. |
 
 ---
 
-## 📸 Media & Hardware Integrations
+## Media & Hardware Integrations
 
 > [!IMPORTANT]
 > **Native Camera Capture API**
-> CampusWash does not rely on simple HTML5 upload hints. It integrates a dedicated **CameraCapture** element powered by the **MediaDevices API (`navigator.mediaDevices.getUserMedia`)**.
+> CampusWash bypasses standard HTML upload hints. It integrates a dedicated **CameraCapture** element powered by the **MediaDevices API (`navigator.mediaDevices.getUserMedia`)**.
 > - **Mobile devices:** Direct native camera activation (bypassing library dialogs) with rear-facing camera optimization.
 > - **Desktop/Laptop:** Native webcam interface fallback with front/rear camera toggle.
 > - **Fallbacks:** Independent "Upload File" control for selecting files from system folders.
 
 ---
 
-## 🗄️ Database Entity Relationships
+## Database Entity Relationships
 
 The schema is built on Supabase (PostgreSQL) with integrated Row-Level Security (RLS) ensuring strict tenant isolation:
 
@@ -81,9 +81,14 @@ erDiagram
 
 ---
 
-## ⚙️ Environment Configuration
+## Interactive Configuration & Setup Guide
 
-### Backend Setup (`backend/.env`)
+Click on any section header below to expand the configuration details, database setup instructions, and execution commands.
+
+<details>
+<summary><b>1. Environment Configuration</b></summary>
+
+### Backend Configuration (`backend/.env`)
 ```ini
 SUPABASE_URL=your-supabase-project-url
 SUPABASE_SERVICE_KEY=your-supabase-service-role-key
@@ -93,17 +98,19 @@ CLERK_PEM_PUBLIC_KEY=your-clerk-pem-public-key
 FRONTEND_URL=http://localhost:5173
 ```
 
-### Frontend Setup (`frontend/.env`)
+### Frontend Configuration (`frontend/.env`)
 ```ini
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 VITE_SUPABASE_URL=your-supabase-project-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 VITE_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 ```
+</details>
 
----
+<details>
+<summary><b>2. Database Setup (Supabase SQL)</b></summary>
 
-## 🗄️ SQL Schema Initialization
+Execute the following SQL in your Supabase SQL Editor to initialize the database tables, indices, and Row-Level Security (RLS) policies:
 
 ```sql
 create extension if not exists "uuid-ossp";
@@ -249,12 +256,12 @@ create policy "public read found items" on found_items for select using (true);
 create policy "Users can insert feedback" on feedbacks for insert with check (true);
 create policy "Admins/Moderators can view feedback" on feedbacks for select using (true);
 ```
+</details>
 
----
+<details>
+<summary><b>3. Local Development Setup</b></summary>
 
-## 🏃 Local Setup & Development
-
-### 1. Backend (FastAPI)
+### Backend Run (FastAPI)
 ```bash
 # Navigate to backend directory
 cd backend
@@ -270,7 +277,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### 2. Frontend (React)
+### Frontend Run (React)
 ```bash
 # Navigate to frontend directory
 cd frontend
@@ -281,18 +288,19 @@ npm install
 # Run dev server
 npm run dev
 ```
+</details>
 
----
+<details>
+<summary><b>4. Production Deployment</b></summary>
 
-## 📦 Deployment
-
-### 1. Render (Backend)
+### Render Deployment (Backend)
 - Create a **Web Service** pointing to the repository.
 - Build command: `pip install -r requirements.txt`
 - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- Configure Environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `JWT_SECRET`, `CLERK_SECRET_KEY` or `CLERK_PEM_PUBLIC_KEY`).
+- Configure environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `JWT_SECRET`, `CLERK_SECRET_KEY` or `CLERK_PEM_PUBLIC_KEY`).
 
-### 2. Vercel (Frontend)
-- Connect repository to Vercel.
+### Vercel Deployment (Frontend)
+- Connect the repository to Vercel.
 - Configure production environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`).
 - Auto-deploys on push to `main` branch.
+</details>
