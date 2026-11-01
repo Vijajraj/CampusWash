@@ -21,20 +21,26 @@ graph TD
     classDef client fill:#eef,stroke:#33f,stroke-width:2px;
     classDef auth fill:#ffe,stroke:#eed,stroke-width:2px;
     classDef backend fill:#efe,stroke:#3a3,stroke-width:2px;
+    classDef fallback fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
     classDef db fill:#fdf,stroke:#a3a,stroke-width:2px;
 
-    Client["React Client (Vite)<br/>• Custom CSS Theme System<br/>• MediaDevices Camera API<br/>• Clerk Auth Provider"]:::client
+    Client["React Client (Vite)<br/>• Auto Failover Engine (apiFetch)<br/>• MediaDevices Camera API<br/>• Clerk Auth Provider"]:::client
     Clerk["Clerk Authentication<br/>• Google Login IDP<br/>• Session Token JWT Verification"]:::auth
-    API["FastAPI Backend (Render)<br/>• Python 3.11 / Pydantic v2<br/>• JWT Validation Middleware<br/>• Image Compression Helper"]:::backend
-    SupaDB["Supabase Database<br/>• PostgreSQL Relational Tables<br/>• Row-Level Security (RLS) Rules<br/>• Realtime WebSocket Channels"]:::db
+    PrimaryAPI["Primary FastAPI (Render Primary)<br/>• Active Web Service"]:::backend
+    FallbackAPI["Fallback FastAPI (Render Standby)<br/>• Auto-Failover Hot Standby"]:::fallback
+    SupaDB["Supabase Database<br/>• Shared PostgreSQL Tables<br/>• Shared State for Both Backends"]:::db
     SupaStorage["Supabase Bucket Storage<br/>• Compressed Clothing Images<br/>• Public Storage CDN Links"]:::db
 
     Client -->|1. Authenticate Request| Clerk
-    Client -->|2. HTTP Request + Bearer JWT Token| API
+    Client -->|2. Try Primary Endpoint| PrimaryAPI
+    Client -.->|2b. Auto-Failover if Suspended / 502 / 503| FallbackAPI
     Client -->|3. Realtime Socket Stream| SupaDB
-    API -->|4. Verify JWT Signatures| Clerk
-    API -->|5. SQL Query / RLS Context| SupaDB
-    API -->|6. Upload compressed files| SupaStorage
+    PrimaryAPI -->|4. Verify JWT Signatures| Clerk
+    PrimaryAPI -->|5. SQL Query / RLS Context| SupaDB
+    PrimaryAPI -->|6. Upload compressed files| SupaStorage
+    FallbackAPI -->|4. Verify JWT Signatures| Clerk
+    FallbackAPI -->|5. SQL Query / RLS Context| SupaDB
+    FallbackAPI -->|6. Upload compressed files| SupaStorage
 ```
 
 ---
@@ -59,6 +65,18 @@ graph TD
 > - **Mobile devices:** Direct native camera activation (bypassing library dialogs) with rear-facing camera optimization.
 > - **Desktop/Laptop:** Native webcam interface fallback with front/rear camera toggle.
 > - **Fallbacks:** Independent "Upload File" control for selecting files from system folders.
+
+---
+
+## High-Availability Backend Failover (Multi-Render Resiliency)
+
+Render free-tier web services can experience downtime due to the 15-minute inactivity spin-down or monthly free instance hour exhaustion (750 hours/month limit), which leads to HTTP 502/503 suspensions.
+
+CampusWash includes an automated dual-backend failover engine (`apiFetch`):
+- **Automatic Health & Error Detection**: Intercepts network failures, request timeouts, and Render suspension status codes (HTTP 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout).
+- **Zero-Downtime Hot Failover**: Transparently retries failed requests against the secondary Render backend URL (`VITE_FALLBACK_API_BASE_URL`) without interrupting user sessions.
+- **Session-Level Sticky Failover**: Promotes the healthy fallback to active status and stores it in `sessionStorage` so subsequent requests do not waste time waiting on the suspended instance.
+- **Shared Database State**: Both Render instances run identical backend code connected to the same Supabase database and Clerk keys, ensuring instant synchronization.
 
 ---
 
@@ -100,7 +118,9 @@ FRONTEND_URL=http://localhost:5173
 
 ### Frontend Configuration (`frontend/.env`)
 ```ini
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=https://campuswash.onrender.com/api/v1
+# Secondary standby Render backend for zero-downtime failover
+VITE_FALLBACK_API_BASE_URL=https://campuswash-fallback.onrender.com/api/v1
 VITE_SUPABASE_URL=your-supabase-project-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 VITE_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
@@ -291,16 +311,34 @@ npm run dev
 </details>
 
 <details>
-<summary><b>4. Production Deployment</b></summary>
+<summary><b>4. Production Deployment & Render High-Availability</b></summary>
 
-### Render Deployment (Backend)
-- Create a **Web Service** pointing to the repository.
+### 1. Render Deployment (Primary & Fallback Web Services)
+You can deploy both the primary and fallback backends using **Render Blueprints** or manual setup:
+
+#### Option A: 1-Click Render Blueprint (`render.yaml`)
+1. In your Render Dashboard, click **New +** > **Blueprint**.
+2. Connect your `CampusWash` GitHub repository.
+3. Render will detect `render.yaml` and provision both:
+   - `campuswash-api` (Primary instance in Oregon)
+   - `campuswash-api-fallback` (Standby instance in Frankfurt)
+4. Input your environment secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `JWT_SECRET`, `CLERK_SECRET_KEY`, `CLERK_PEM_PUBLIC_KEY`).
+
+#### Option B: Manual Web Service Setup
+- Create two separate Web Services pointing to this repo:
+  - **Service 1 (Primary):** e.g., `campuswash.onrender.com`
+  - **Service 2 (Fallback):** e.g., `campuswash-fallback.onrender.com` (can be deployed on a separate Render account to bypass the 750 free hours/month limit)
 - Build command: `pip install -r requirements.txt`
 - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- Configure environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `JWT_SECRET`, `CLERK_SECRET_KEY` or `CLERK_PEM_PUBLIC_KEY`).
+- Configure identical environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `JWT_SECRET`, `CLERK_SECRET_KEY` / `CLERK_PEM_PUBLIC_KEY`).
 
-### Vercel Deployment (Frontend)
+### 2. Vercel Deployment (Frontend)
 - Connect the repository to Vercel.
-- Configure production environment variables (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`).
-- Auto-deploys on push to `main` branch.
+- Configure production environment variables in your Vercel Project Settings:
+  - `VITE_API_BASE_URL` = `https://campuswash.onrender.com/api/v1`
+  - `VITE_FALLBACK_API_BASE_URL` = `https://campuswash-fallback.onrender.com/api/v1`
+  - `VITE_SUPABASE_URL` = `https://your-project.supabase.co`
+  - `VITE_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
+  - `VITE_CLERK_PUBLISHABLE_KEY` = `pk_live_...` or `pk_test_...`
+- Auto-deploys on push to `main` branch with zero-downtime failover enabled.
 </details>

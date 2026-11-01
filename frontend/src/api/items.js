@@ -1,4 +1,4 @@
-import { BASE_URL } from "./config";
+import { apiFetch } from "./config";
 
 const getHeaders = (isMultipart = false) => {
   const headers = {};
@@ -35,7 +35,7 @@ export const getLostItems = async (filters = {}, page = 1) => {
   if (filters.type) queryParams.append("type", filters.type);
   if (filters.color) queryParams.append("color", filters.color);
 
-  const res = await fetch(`${BASE_URL}/items/lost?${queryParams.toString()}`, {
+  const res = await apiFetch(`/items/lost?${queryParams.toString()}`, {
     headers: getHeaders(),
   });
   return handleResponse(res);
@@ -47,14 +47,14 @@ export const getFoundItems = async (filters = {}, page = 1) => {
   if (filters.type) queryParams.append("type", filters.type);
   if (filters.color) queryParams.append("color", filters.color);
 
-  const res = await fetch(`${BASE_URL}/items/found?${queryParams.toString()}`, {
+  const res = await apiFetch(`/items/found?${queryParams.toString()}`, {
     headers: getHeaders(),
   });
   return handleResponse(res);
 };
 
 export const postLostItem = async (formData) => {
-  const res = await fetch(`${BASE_URL}/items/lost`, {
+  const res = await apiFetch("/items/lost", {
     method: "POST",
     headers: getHeaders(true),
     body: formData,
@@ -63,7 +63,7 @@ export const postLostItem = async (formData) => {
 };
 
 export const postFoundItem = async (formData) => {
-  const res = await fetch(`${BASE_URL}/items/found`, {
+  const res = await apiFetch("/items/found", {
     method: "POST",
     headers: getHeaders(true),
     body: formData,
@@ -72,7 +72,7 @@ export const postFoundItem = async (formData) => {
 };
 
 export const closeLostItem = async (id) => {
-  const res = await fetch(`${BASE_URL}/items/lost/${id}/close`, {
+  const res = await apiFetch(`/items/lost/${id}/close`, {
     method: "PATCH",
     headers: getHeaders(),
   });
@@ -80,7 +80,7 @@ export const closeLostItem = async (id) => {
 };
 
 export const claimFoundItem = async (id) => {
-  const res = await fetch(`${BASE_URL}/items/found/${id}/claim`, {
+  const res = await apiFetch(`/items/found/${id}/claim`, {
     method: "PATCH",
     headers: getHeaders(),
   });
@@ -88,7 +88,7 @@ export const claimFoundItem = async (id) => {
 };
 
 export const reportItem = async (targetType, targetId, reason) => {
-  const res = await fetch(`${BASE_URL}/items/report`, {
+  const res = await apiFetch("/items/report", {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
@@ -99,4 +99,3 @@ export const reportItem = async (targetType, targetId, reason) => {
   });
   return handleResponse(res);
 };
-

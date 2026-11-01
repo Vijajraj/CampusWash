@@ -3,6 +3,7 @@ import useAuth from "../hooks/useAuth";
 import StatusBadge from "./StatusBadge";
 import { closeLostItem, claimFoundItem, reportItem } from "../api/items";
 import { showToast } from "../hooks/useItems";
+import { getImageUrl } from "../api/config";
 import { Calendar, MapPin, User, Mail, Phone, AlertTriangle, ShieldAlert } from "lucide-react";
 
 export default function ItemCard({ item, isLost, onRefresh }) {
@@ -65,11 +66,7 @@ export default function ItemCard({ item, isLost, onRefresh }) {
   };
 
   // Build image URL or placeholder
-  const imageSrc = item.image_url
-    ? item.image_url.startsWith("http")
-      ? item.image_url
-      : `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"}/static/${item.image_url}`
-    : null;
+  const imageSrc = item.image_url ? getImageUrl(item.image_url) : null;
 
   return (
     <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-all duration-300">

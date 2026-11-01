@@ -1,4 +1,4 @@
-import { BASE_URL } from "./config";
+import { apiFetch } from "./config";
 
 const getHeaders = () => {
   const headers = {
@@ -29,7 +29,7 @@ const handleResponse = async (response) => {
 };
 
 export const submitFeedback = async (message, rating) => {
-  const res = await fetch(`${BASE_URL}/feedback`, {
+  const res = await apiFetch("/feedback", {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ message, rating }),

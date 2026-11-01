@@ -1,4 +1,4 @@
-import { BASE_URL } from "./config";
+import { apiFetch } from "./config";
 
 const getHeaders = (isMultipart = false) => {
   const headers = {};
@@ -35,14 +35,14 @@ export const getListings = async (filters = {}, page = 1) => {
   if (filters.type) queryParams.append("type", filters.type);
   if (filters.size) queryParams.append("size", filters.size);
 
-  const res = await fetch(`${BASE_URL}/borrow/listings?${queryParams.toString()}`, {
+  const res = await apiFetch(`/borrow/listings?${queryParams.toString()}`, {
     headers: getHeaders(),
   });
   return handleResponse(res);
 };
 
 export const createListing = async (formData) => {
-  const res = await fetch(`${BASE_URL}/borrow/listings`, {
+  const res = await apiFetch("/borrow/listings", {
     method: "POST",
     headers: getHeaders(true),
     body: formData,
@@ -51,7 +51,7 @@ export const createListing = async (formData) => {
 };
 
 export const deleteListing = async (id) => {
-  const res = await fetch(`${BASE_URL}/borrow/listings/${id}`, {
+  const res = await apiFetch(`/borrow/listings/${id}`, {
     method: "DELETE",
     headers: getHeaders(),
   });
@@ -59,14 +59,14 @@ export const deleteListing = async (id) => {
 };
 
 export const getListing = async (id) => {
-  const res = await fetch(`${BASE_URL}/borrow/listings/${id}`, {
+  const res = await apiFetch(`/borrow/listings/${id}`, {
     headers: getHeaders(),
   });
   return handleResponse(res);
 };
 
 export const requestBorrow = async (listingId, reason, from, until) => {
-  const res = await fetch(`${BASE_URL}/borrow/listings/${listingId}/request`, {
+  const res = await apiFetch(`/borrow/listings/${listingId}/request`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
@@ -79,7 +79,7 @@ export const requestBorrow = async (listingId, reason, from, until) => {
 };
 
 export const getMyRequests = async (page = 1) => {
-  const res = await fetch(`${BASE_URL}/borrow/my-requests?page=${page}`, {
+  const res = await apiFetch(`/borrow/my-requests?page=${page}`, {
     method: "GET",
     headers: getHeaders(),
   });
@@ -87,7 +87,7 @@ export const getMyRequests = async (page = 1) => {
 };
 
 export const getMyListingRequests = async (page = 1) => {
-  const res = await fetch(`${BASE_URL}/borrow/my-listings-requests?page=${page}`, {
+  const res = await apiFetch(`/borrow/my-listings-requests?page=${page}`, {
     method: "GET",
     headers: getHeaders(),
   });
@@ -95,7 +95,7 @@ export const getMyListingRequests = async (page = 1) => {
 };
 
 export const approveRequest = async (id) => {
-  const res = await fetch(`${BASE_URL}/borrow/requests/${id}/approve`, {
+  const res = await apiFetch(`/borrow/requests/${id}/approve`, {
     method: "PATCH",
     headers: getHeaders(),
   });
@@ -103,7 +103,7 @@ export const approveRequest = async (id) => {
 };
 
 export const rejectRequest = async (id) => {
-  const res = await fetch(`${BASE_URL}/borrow/requests/${id}/reject`, {
+  const res = await apiFetch(`/borrow/requests/${id}/reject`, {
     method: "PATCH",
     headers: getHeaders(),
   });
@@ -111,10 +111,9 @@ export const rejectRequest = async (id) => {
 };
 
 export const confirmReturn = async (id) => {
-  const res = await fetch(`${BASE_URL}/borrow/requests/${id}/return`, {
+  const res = await apiFetch(`/borrow/requests/${id}/return`, {
     method: "PATCH",
     headers: getHeaders(),
   });
   return handleResponse(res);
 };
-

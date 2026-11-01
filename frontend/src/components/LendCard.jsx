@@ -3,6 +3,7 @@ import useAuth from "../hooks/useAuth";
 import StatusBadge from "./StatusBadge";
 import { requestBorrow, deleteListing } from "../api/borrow";
 import { showToast } from "../hooks/useBorrow";
+import { getImageUrl } from "../api/config";
 import { Calendar, User, Trash2, Clock, Eye } from "lucide-react";
 
 export default function LendCard({ listing, onRefresh }) {
@@ -54,11 +55,7 @@ export default function LendCard({ listing, onRefresh }) {
   };
 
   // Build API image URL if exists, else placeholder
-  const imageSrc = listing.image_url
-    ? listing.image_url.startsWith("http")
-      ? listing.image_url
-      : `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"}/static/${listing.image_url}`
-    : null;
+  const imageSrc = listing.image_url ? getImageUrl(listing.image_url) : null;
 
   return (
     <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-all duration-300">

@@ -1,4 +1,4 @@
-import { BASE_URL } from "./config";
+import { apiFetch } from "./config";
 
 const getHeaders = () => {
   const headers = {
@@ -29,7 +29,7 @@ const handleResponse = async (response) => {
 };
 
 export const clerkLogin = async (clerkToken) => {
-  const res = await fetch(`${BASE_URL}/auth/clerk-login`, {
+  const res = await apiFetch("/auth/clerk-login", {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ clerk_token: clerkToken }),
@@ -38,7 +38,7 @@ export const clerkLogin = async (clerkToken) => {
 };
 
 export const completeProfile = async (name, registerNumber, dept, batchYear, phone) => {
-  const res = await fetch(`${BASE_URL}/auth/complete-profile`, {
+  const res = await apiFetch("/auth/complete-profile", {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
@@ -53,10 +53,9 @@ export const completeProfile = async (name, registerNumber, dept, batchYear, pho
 };
 
 export const getMe = async () => {
-  const res = await fetch(`${BASE_URL}/auth/me`, {
+  const res = await apiFetch("/auth/me", {
     method: "GET",
     headers: getHeaders(),
   });
   return handleResponse(res);
 };
-

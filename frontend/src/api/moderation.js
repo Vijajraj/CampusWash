@@ -1,4 +1,4 @@
-import { BASE_URL } from "./config";
+import { apiFetch } from "./config";
 
 const getHeaders = () => {
   const headers = {
@@ -33,7 +33,7 @@ export const getReports = async (status = "", page = 1) => {
   queryParams.append("page", page);
   if (status) queryParams.append("status", status);
 
-  const res = await fetch(`${BASE_URL}/admin/reports?${queryParams.toString()}`, {
+  const res = await apiFetch(`/admin/reports?${queryParams.toString()}`, {
     method: "GET",
     headers: getHeaders(),
   });
@@ -41,7 +41,7 @@ export const getReports = async (status = "", page = 1) => {
 };
 
 export const resolveReport = async (id, action) => {
-  const res = await fetch(`${BASE_URL}/admin/reports/${id}/resolve`, {
+  const res = await apiFetch(`/admin/reports/${id}/resolve`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ action }),
@@ -50,7 +50,7 @@ export const resolveReport = async (id, action) => {
 };
 
 export const getUsersList = async (page = 1) => {
-  const res = await fetch(`${BASE_URL}/admin/users?page=${page}`, {
+  const res = await apiFetch(`/admin/users?page=${page}`, {
     method: "GET",
     headers: getHeaders(),
   });
@@ -58,11 +58,10 @@ export const getUsersList = async (page = 1) => {
 };
 
 export const updateUserRole = async (id, role) => {
-  const res = await fetch(`${BASE_URL}/admin/users/${id}/role`, {
+  const res = await apiFetch(`/admin/users/${id}/role`, {
     method: "PATCH",
     headers: getHeaders(),
     body: JSON.stringify({ role }),
   });
   return handleResponse(res);
 };
-
